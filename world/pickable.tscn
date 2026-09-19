@@ -1,0 +1,79 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://world/Pickable.cs" id="1_pickable"]
+
+[sub_resource type="StandardMaterial3D" id="Material_body"]
+albedo_color = Color(1, 0.55, 0.035, 1)
+metallic = 0.25
+roughness = 0.4
+emission_enabled = true
+emission = Color(1, 0.3, 0.01, 1)
+emission_energy_multiplier = 0.3
+
+[sub_resource type="StandardMaterial3D" id="Material_caps"]
+albedo_color = Color(0.035, 0.055, 0.085, 1)
+metallic = 0.65
+roughness = 0.35
+
+[sub_resource type="StandardMaterial3D" id="Material_light"]
+albedo_color = Color(0.05, 1, 0.85, 1)
+emission_enabled = true
+emission = Color(0.05, 1, 0.85, 1)
+emission_energy_multiplier = 1.5
+
+[sub_resource type="CylinderShape3D" id="Shape_item"]
+radius = 0.26
+height = 0.62
+
+[sub_resource type="CylinderMesh" id="Mesh_body"]
+material = SubResource("Material_body")
+top_radius = 0.23
+bottom_radius = 0.23
+height = 0.5
+radial_segments = 6
+
+[sub_resource type="CylinderMesh" id="Mesh_cap"]
+material = SubResource("Material_caps")
+top_radius = 0.26
+bottom_radius = 0.26
+height = 0.08
+radial_segments = 6
+
+[sub_resource type="CylinderMesh" id="Mesh_band"]
+material = SubResource("Material_light")
+top_radius = 0.24
+bottom_radius = 0.24
+height = 0.035
+radial_segments = 6
+
+[sub_resource type="PhysicsMaterial" id="Physics_item"]
+friction = 0.8
+bounce = 0.05
+
+[node name="Pickable" type="RigidBody3D"]
+mass = 0.5
+physics_material_override = SubResource("Physics_item")
+script = ExtResource("1_pickable")
+DisplayName = "Energy canister"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("Shape_item")
+
+[node name="Body" type="MeshInstance3D" parent="."]
+mesh = SubResource("Mesh_body")
+
+[node name="TopCap" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.27, 0)
+mesh = SubResource("Mesh_cap")
+
+[node name="BottomCap" type="MeshInstance3D" parent="."]
+position = Vector3(0, -0.27, 0)
+mesh = SubResource("Mesh_cap")
+
+[node name="UpperLightBand" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.17, 0)
+mesh = SubResource("Mesh_band")
+
+[node name="LowerLightBand" type="MeshInstance3D" parent="."]
+position = Vector3(0, -0.17, 0)
+mesh = SubResource("Mesh_band")

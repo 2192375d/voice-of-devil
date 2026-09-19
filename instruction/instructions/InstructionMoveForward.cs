@@ -1,7 +1,5 @@
-partial class InstructionMoveForward : Instruction
+public sealed class InstructionMoveForward : SustainedAction
 {
-    public override void Perform(params object[] args)
-    {
-
-    }
+    protected override void Update(double delta, IInstructionTarget target)
+        => target.CommandWalkForward();
 }

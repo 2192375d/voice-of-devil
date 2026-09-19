@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="GodotSharp" Version="4.7.2" />
+    <Compile Include="../../instruction/**/*.cs" LinkBase="Instructions" />
+    <Compile Include="../../mcp-server/McpTools.cs" />
+    <Compile Include="../../mcp-server/McpInbox.cs" />
+    <Compile Include="../../mcp-server/McpProtocol.cs" />
+    <Compile Include="../../mcp-server/McpHttpTransport.cs" />
+    <Compile Include="../../mcp-server/McpInstructionBridge.cs" />
+  </ItemGroup>
+</Project>

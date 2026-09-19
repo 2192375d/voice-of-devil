@@ -1,10 +1,13 @@
 [gd_scene format=3 uid="uid://b86jp7368epuf"]
 
+[ext_resource type="PackedScene" path="res://world/pickable.tscn" id="7_pickable"]
+
 [ext_resource type="Texture2D" uid="uid://ddprscrpsofah" path="res://demo/assets/textures/ground037_alb_ht.png" id="1_6xmxd"]
 [ext_resource type="Texture2D" uid="uid://fxj2cdcsvwi2" path="res://world/noise_texture.res" id="1_tcf2h"]
 [ext_resource type="Texture2D" uid="uid://didw5d75ckm53" path="res://world/normal_texture.res" id="3_4717r"]
 [ext_resource type="Script" uid="uid://bfv1c70nr0s4b" path="res://world/AiCamera.cs" id="5_fn3g3"]
 [ext_resource type="Script" uid="uid://bskv5oh0gxjev" path="res://world/Player.cs" id="5_mmdvd"]
+[ext_resource type="Script" uid="uid://bl0uaknl6stic" path="res://world/InstructionControls.cs" id="6_controls"]
 
 [sub_resource type="Terrain3DMaterial" id="Terrain3DMaterial_mmdvd"]
 _shader_parameters = {
@@ -67,6 +70,9 @@ viewport_path = NodePath("Player/SubViewport")
 
 [node name="World" type="Node3D" unique_id=2050754906]
 
+[node name="Pickable" parent="." instance=ExtResource("7_pickable")]
+position = Vector3(0.6, 7, -1.4)
+
 [node name="Terrain3D" type="Terrain3D" parent="." unique_id=194056833]
 data_directory = "res://world/terrain_data"
 material = SubResource("Terrain3DMaterial_mmdvd")
@@ -81,10 +87,21 @@ script = ExtResource("5_mmdvd")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Player" unique_id=1600420215]
 shape = SubResource("CapsuleShape3D_olw2f")
 
+[node name="PickupOrigin" type="Marker3D" parent="Player"]
+position = Vector3(0, 0.5, 0)
+
+[node name="HoldPoint" type="Marker3D" parent="Player"]
+position = Vector3(0.35, 0.25, -1)
+
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Player" unique_id=1793170267]
 mesh = SubResource("CapsuleMesh_s5msr")
 
 [node name="SubViewport" type="SubViewport" parent="Player" unique_id=1653173750]
+size = Vector2i(512, 512)
+render_target_update_mode = 4
+
+[node name="Eye" type="Marker3D" parent="Player"]
+position = Vector3(0, 0.65, -0.66)
 
 [node name="AICamera" type="Camera3D" parent="Player/SubViewport" unique_id=1315541577]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 7.6453967, -0.6598297)
@@ -98,6 +115,53 @@ current = true
 environment = SubResource("Environment_s5msr")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=714652640]
+
+[node name="InstructionControls" type="HBoxContainer" parent="CanvasLayer" unique_id=404291972]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -60.0
+offset_right = 620.0
+offset_bottom = -16.0
+grow_vertical = 0
+theme_override_constants/separation = 8
+script = ExtResource("6_controls")
+
+[node name="WalkForward" type="Button" parent="CanvasLayer/InstructionControls" unique_id=286687312]
+custom_minimum_size = Vector2(140, 44)
+layout_mode = 2
+tooltip_text = "Walk continuously until Stop is pressed."
+focus_mode = 0
+text = "Walk forward"
+
+[node name="Rotate" type="Button" parent="CanvasLayer/InstructionControls" unique_id=911538893]
+custom_minimum_size = Vector2(108, 44)
+layout_mode = 2
+tooltip_text = "Turn right 90 degrees. Can run while walking."
+focus_mode = 0
+text = "Rotate (90 deg)"
+
+[node name="Stop" type="Button" parent="CanvasLayer/InstructionControls" unique_id=737803211]
+custom_minimum_size = Vector2(108, 44)
+layout_mode = 2
+tooltip_text = "Stop all active walking and rotation."
+focus_mode = 0
+text = "Stop"
+
+[node name="PickUp" type="Button" parent="CanvasLayer/InstructionControls"]
+custom_minimum_size = Vector2(108, 44)
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Pick up the nearest visible item in front. Stop walking and rotating first. Result appears in Output."
+text = "Pick up"
+
+[node name="Drop" type="Button" parent="CanvasLayer/InstructionControls"]
+custom_minimum_size = Vector2(108, 44)
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Release the held item if there is room. Stop movement first. Result appears in Output."
+text = "Drop"
 
 [node name="Control" type="Control" parent="CanvasLayer" unique_id=1720852595]
 layout_mode = 3
@@ -129,3 +193,13 @@ offset_right = 205.0
 offset_bottom = 205.0
 color = Color(0.4392157, 1, 1, 0.14509805)
 metadata/_edit_use_anchors_ = true
+
+[node name="CSGBox3D" type="CSGBox3D" parent="." unique_id=1481940672]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2828565, -11.443954)
+use_collision = true
+size = Vector3(5, 5, 5)
+
+[node name="CSGBox3D2" type="CSGBox3D" parent="." unique_id=1599181792]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.3171015, 2.0098863, -5.8522177)
+use_collision = true
+size = Vector3(5, 5, 5)
