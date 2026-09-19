@@ -21,7 +21,7 @@ movement immediately, and leaves gravity running.
 `ActiveInstructions` exposes status, elapsed time, and typed instruction progress.
 `LastFinishedInstruction` retains the latest completion, including stop.
 The player ticks the manager before applying movement, so callers must not tick
-it separately. The manager has no gameplay queue; a future HTTP/MCP adapter must
+it separately. The manager has no gameplay queue; the HTTP game API must
 marshal requests to the main thread through its own inbox.
 
 ## Picking up items

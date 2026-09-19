@@ -2,7 +2,7 @@ using System.Linq;
 using System.Text.Json;
 using Godot;
 
-public static class McpGameState
+public static class GameState
 {
     public static object Snapshot(Player player, AiCamera camera, long sequence, double simulationTime, int pendingActions)
     {
