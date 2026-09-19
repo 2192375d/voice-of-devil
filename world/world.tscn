@@ -3,7 +3,8 @@
 [ext_resource type="Texture2D" uid="uid://ddprscrpsofah" path="res://demo/assets/textures/ground037_alb_ht.png" id="1_6xmxd"]
 [ext_resource type="Texture2D" uid="uid://fxj2cdcsvwi2" path="res://world/noise_texture.res" id="1_tcf2h"]
 [ext_resource type="Texture2D" uid="uid://didw5d75ckm53" path="res://world/normal_texture.res" id="3_4717r"]
-[ext_resource type="PackedScene" uid="uid://drpe03qe6ih5k" path="res://world/player.tscn" id="4_h5o24"]
+[ext_resource type="Script" uid="uid://bfv1c70nr0s4b" path="res://world/AiCamera.cs" id="5_fn3g3"]
+[ext_resource type="Script" uid="uid://bskv5oh0gxjev" path="res://world/Player.cs" id="5_mmdvd"]
 
 [sub_resource type="Terrain3DMaterial" id="Terrain3DMaterial_mmdvd"]
 _shader_parameters = {
@@ -53,9 +54,16 @@ normal_texture = ExtResource("3_4717r")
 mesh_list = Array[Terrain3DMeshAsset]([SubResource("Terrain3DMeshAsset_sc4t8")])
 texture_list = Array[Terrain3DTextureAsset]([SubResource("Terrain3DTextureAsset_fyhu2")])
 
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_olw2f"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_s5msr"]
+
 [sub_resource type="Environment" id="Environment_s5msr"]
 background_mode = 1
 background_color = Color(1, 1, 1, 1)
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_h5o24"]
+viewport_path = NodePath("Player/SubViewport")
 
 [node name="World" type="Node3D" unique_id=2050754906]
 
@@ -66,14 +74,58 @@ assets = SubResource("Terrain3DAssets_ov2xu")
 top_level = true
 metadata/_edit_lock_ = true
 
-[node name="Player" parent="." unique_id=100764729 instance=ExtResource("4_h5o24")]
+[node name="Player" type="CharacterBody3D" parent="." unique_id=100764729]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 7, 0)
+script = ExtResource("5_mmdvd")
 
-[node name="Camera3D" type="Camera3D" parent="Player" unique_id=239887681]
-transform = Transform3D(1, 0, 0, 0, 0.84200317, 0.5394726, 0, -0.5394726, 0.84200317, 0, 2.8750858, 5.619672)
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Player" unique_id=1600420215]
+shape = SubResource("CapsuleShape3D_olw2f")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Player" unique_id=1793170267]
+mesh = SubResource("CapsuleMesh_s5msr")
+
+[node name="SubViewport" type="SubViewport" parent="Player" unique_id=1653173750]
+
+[node name="AICamera" type="Camera3D" parent="Player/SubViewport" unique_id=1315541577]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 7.6453967, -0.6598297)
+script = ExtResource("5_fn3g3")
+
+[node name="ThirdPOVCamera" type="Camera3D" parent="Player" unique_id=1873352052]
+transform = Transform3D(1, 0, 0, 0, 0.6497365, 0.7601595, 0, -0.7601595, 0.6497365, 0, 3.6681452, 3.991806)
 current = true
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=28198587]
 environment = SubResource("Environment_s5msr")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=714652640]
+
+[node name="Control" type="Control" parent="CanvasLayer" unique_id=1720852595]
+layout_mode = 3
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -232.0
+offset_top = -230.0
+offset_right = -232.0
+offset_bottom = -230.0
+grow_horizontal = 0
+grow_vertical = 0
+metadata/_edit_use_anchors_ = true
+
+[node name="TextureRect" type="TextureRect" parent="CanvasLayer/Control" unique_id=24625869]
+layout_mode = 0
+offset_right = 512.0
+offset_bottom = 512.0
+scale = Vector2(0.4, 0.4)
+texture = SubResource("ViewportTexture_h5o24")
+expand_mode = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="ColorRect" type="ColorRect" parent="CanvasLayer/Control" unique_id=1938859125]
+layout_mode = 0
+offset_right = 205.0
+offset_bottom = 205.0
+color = Color(0.4392157, 1, 1, 0.14509805)
+metadata/_edit_use_anchors_ = true

@@ -12,8 +12,13 @@ config_version=5
 
 config/name="words-of-devil"
 run/main_scene="uid://b86jp7368epuf"
-config/features=PackedStringArray("4.7", "Forward Plus")
+config/features=PackedStringArray("4.7", "C#", "Forward Plus")
 config/icon="res://icon.svg"
+
+[autoload]
+
+McpServer="*uid://dmi6jaxiuj3dl"
+Cache="*uid://co1ue3wo52ajv"
 
 [display]
 
