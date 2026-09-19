@@ -17,7 +17,7 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-McpServer="*uid://dmi6jaxiuj3dl"
+GameApiServer="*res://game-api/GameApiServer.cs"
 Cache="*uid://co1ue3wo52ajv"
 
 [display]

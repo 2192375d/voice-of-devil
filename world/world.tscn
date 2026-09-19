@@ -1,13 +1,12 @@
 [gd_scene format=3 uid="uid://b86jp7368epuf"]
 
-[ext_resource type="PackedScene" path="res://world/pickable.tscn" id="7_pickable"]
-
 [ext_resource type="Texture2D" uid="uid://ddprscrpsofah" path="res://demo/assets/textures/ground037_alb_ht.png" id="1_6xmxd"]
 [ext_resource type="Texture2D" uid="uid://fxj2cdcsvwi2" path="res://world/noise_texture.res" id="1_tcf2h"]
 [ext_resource type="Texture2D" uid="uid://didw5d75ckm53" path="res://world/normal_texture.res" id="3_4717r"]
 [ext_resource type="Script" uid="uid://bfv1c70nr0s4b" path="res://world/AiCamera.cs" id="5_fn3g3"]
 [ext_resource type="Script" uid="uid://bskv5oh0gxjev" path="res://world/Player.cs" id="5_mmdvd"]
 [ext_resource type="Script" uid="uid://bl0uaknl6stic" path="res://world/InstructionControls.cs" id="6_controls"]
+[ext_resource type="PackedScene" uid="uid://b6n5k0vfltgjj" path="res://world/pickable.tscn" id="7_pickable"]
 
 [sub_resource type="Terrain3DMaterial" id="Terrain3DMaterial_mmdvd"]
 _shader_parameters = {
@@ -70,8 +69,8 @@ viewport_path = NodePath("Player/SubViewport")
 
 [node name="World" type="Node3D" unique_id=2050754906]
 
-[node name="Pickable" parent="." instance=ExtResource("7_pickable")]
-position = Vector3(0.6, 7, -1.4)
+[node name="Pickable" parent="." unique_id=1591113645 instance=ExtResource("7_pickable")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 1.8190775, -5.429251)
 
 [node name="Terrain3D" type="Terrain3D" parent="." unique_id=194056833]
 data_directory = "res://world/terrain_data"
@@ -87,25 +86,24 @@ script = ExtResource("5_mmdvd")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Player" unique_id=1600420215]
 shape = SubResource("CapsuleShape3D_olw2f")
 
-[node name="PickupOrigin" type="Marker3D" parent="Player"]
-position = Vector3(0, 0.5, 0)
+[node name="PickupOrigin" type="Marker3D" parent="Player" unique_id=1868861069]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
 
-[node name="HoldPoint" type="Marker3D" parent="Player"]
-position = Vector3(0.35, 0.25, -1)
+[node name="HoldPoint" type="Marker3D" parent="Player" unique_id=594999177]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, 0.25, -1)
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Player" unique_id=1793170267]
 mesh = SubResource("CapsuleMesh_s5msr")
 
 [node name="SubViewport" type="SubViewport" parent="Player" unique_id=1653173750]
-size = Vector2i(512, 512)
 render_target_update_mode = 4
-
-[node name="Eye" type="Marker3D" parent="Player"]
-position = Vector3(0, 0.65, -0.66)
 
 [node name="AICamera" type="Camera3D" parent="Player/SubViewport" unique_id=1315541577]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 7.6453967, -0.6598297)
 script = ExtResource("5_fn3g3")
+
+[node name="Eye" type="Marker3D" parent="Player" unique_id=1112549358]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.65, -0.66)
 
 [node name="ThirdPOVCamera" type="Camera3D" parent="Player" unique_id=1873352052]
 transform = Transform3D(1, 0, 0, 0, 0.6497365, 0.7601595, 0, -0.7601595, 0.6497365, 0, 3.6681452, 3.991806)
@@ -149,18 +147,18 @@ tooltip_text = "Stop all active walking and rotation."
 focus_mode = 0
 text = "Stop"
 
-[node name="PickUp" type="Button" parent="CanvasLayer/InstructionControls"]
+[node name="PickUp" type="Button" parent="CanvasLayer/InstructionControls" unique_id=422760396]
 custom_minimum_size = Vector2(108, 44)
 layout_mode = 2
-focus_mode = 0
 tooltip_text = "Pick up the nearest visible item in front. Stop walking and rotating first. Result appears in Output."
+focus_mode = 0
 text = "Pick up"
 
-[node name="Drop" type="Button" parent="CanvasLayer/InstructionControls"]
+[node name="Drop" type="Button" parent="CanvasLayer/InstructionControls" unique_id=446218248]
 custom_minimum_size = Vector2(108, 44)
 layout_mode = 2
-focus_mode = 0
 tooltip_text = "Release the held item if there is room. Stop movement first. Result appears in Output."
+focus_mode = 0
 text = "Drop"
 
 [node name="Control" type="Control" parent="CanvasLayer" unique_id=1720852595]

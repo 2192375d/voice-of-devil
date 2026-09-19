@@ -1,9 +1,9 @@
 using System.Text.Json;
 using Godot;
 
-public static class McpInstructionBridge
+public static class GameInstructionBridge
 {
-    public static McpToolResult Execute(InstructionManager manager, McpCommand command)
+    public static GameCommandResult Execute(InstructionManager manager, GameCommand command)
     {
         var result = command.Name switch
         {
@@ -16,6 +16,6 @@ public static class McpInstructionBridge
         };
         bool success = result is InstructionRequestResult.Started or InstructionRequestResult.AlreadyRunning
             or InstructionRequestResult.Stopped or InstructionRequestResult.PickedUp or InstructionRequestResult.Dropped;
-        return McpToolResult.Status(JsonNamingPolicy.SnakeCaseLower.ConvertName(result.ToString()), !success);
+        return GameCommandResult.Status(JsonNamingPolicy.SnakeCaseLower.ConvertName(result.ToString()), !success);
     }
 }
