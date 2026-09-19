@@ -1,16 +1,31 @@
 [project]
 name = "mcp-server-jev-client"
 version = "0.1.0"
-description = "Add your description here"
+description = "First-person Godot observations summarized by Gemini and evaluated by Jev"
 readme = "README.md"
 authors = [
     { name = "digitalyoshixi", email = "digitalyoshixi@proton.me" }
 ]
 requires-python = ">=3.13"
 dependencies = [
+    "backboard-sdk>=1.5.19",
+    "fastapi>=0.115,<1",
+    "google-genai>=1,<3",
     "httpx>=0.28.1",
-    "mcp[cli]>=2.2.0",
+    "httpx2>=2.13,<3",
+    "mcp[cli]>=2.2.0,<3",
+    "pydantic>=2.13.5,<3",
+    "python-dotenv>=1.2.3",
+    "uvicorn>=0.30,<1",
 ]
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-asyncio>=1"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = ["live: requires rendered Godot and paid Gemini/Backboard API access"]
 
 [project.scripts]
 mcp-server-jev-client = "mcp_server_jev_client:main"
