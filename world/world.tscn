@@ -1,0 +1,77 @@
+[gd_scene format=3 uid="uid://b86jp7368epuf"]
+
+[ext_resource type="Texture2D" uid="uid://ddprscrpsofah" path="res://demo/assets/textures/ground037_alb_ht.png" id="1_6xmxd"]
+[ext_resource type="Texture2D" uid="uid://fxj2cdcsvwi2" path="res://world/noise_texture.res" id="1_tcf2h"]
+[ext_resource type="Texture2D" uid="uid://didw5d75ckm53" path="res://world/normal_texture.res" id="3_4717r"]
+[ext_resource type="PackedScene" uid="uid://drpe03qe6ih5k" path="res://world/player.tscn" id="4_h5o24"]
+
+[sub_resource type="Terrain3DMaterial" id="Terrain3DMaterial_mmdvd"]
+_shader_parameters = {
+&"bias_distance": null,
+&"blend_sharpness": null,
+&"depth_blur": null,
+&"enable_macro_variation": null,
+&"enable_projection": null,
+&"flat_terrain_normals": null,
+&"macro_variation1": null,
+&"macro_variation2": null,
+&"macro_variation_slope": null,
+&"mipmap_bias": null,
+&"noise1_angle": null,
+&"noise1_offset": null,
+&"noise1_scale": null,
+&"noise2_scale": null,
+&"noise_texture": ExtResource("1_tcf2h"),
+&"projection_threshold": null
+}
+world_background = 0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_fn3g3"]
+transparency = 4
+cull_mode = 2
+vertex_color_use_as_albedo = true
+backlight_enabled = true
+backlight = Color(0.5, 0.5, 0.5, 1)
+distance_fade_mode = 1
+distance_fade_min_distance = 128.0
+distance_fade_max_distance = 96.0
+
+[sub_resource type="Terrain3DMeshAsset" id="Terrain3DMeshAsset_sc4t8"]
+generated_type = 1
+height_offset = 0.5
+material_override = SubResource("StandardMaterial3D_fn3g3")
+last_lod = 0
+last_shadow_lod = 0
+lod0_range = 128.0
+
+[sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_fyhu2"]
+name = "ground037_alb_ht"
+albedo_texture = ExtResource("1_6xmxd")
+normal_texture = ExtResource("3_4717r")
+
+[sub_resource type="Terrain3DAssets" id="Terrain3DAssets_ov2xu"]
+mesh_list = Array[Terrain3DMeshAsset]([SubResource("Terrain3DMeshAsset_sc4t8")])
+texture_list = Array[Terrain3DTextureAsset]([SubResource("Terrain3DTextureAsset_fyhu2")])
+
+[sub_resource type="Environment" id="Environment_s5msr"]
+background_mode = 1
+background_color = Color(1, 1, 1, 1)
+
+[node name="World" type="Node3D" unique_id=2050754906]
+
+[node name="Terrain3D" type="Terrain3D" parent="." unique_id=194056833]
+data_directory = "res://world/terrain_data"
+material = SubResource("Terrain3DMaterial_mmdvd")
+assets = SubResource("Terrain3DAssets_ov2xu")
+top_level = true
+metadata/_edit_lock_ = true
+
+[node name="Player" parent="." unique_id=100764729 instance=ExtResource("4_h5o24")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 7, 0)
+
+[node name="Camera3D" type="Camera3D" parent="Player" unique_id=239887681]
+transform = Transform3D(1, 0, 0, 0, 0.84200317, 0.5394726, 0, -0.5394726, 0.84200317, 0, 2.8750858, 5.619672)
+current = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=28198587]
+environment = SubResource("Environment_s5msr")
