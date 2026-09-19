@@ -2,40 +2,40 @@ using Godot;
 using System;
 using System.Collections.Concurrent;
 
-public partial class McpServer : Node
+public partial class GameApiServer : Node
 {
 	[Export] public string BindAddress = "0.0.0.0";
 	[Export] public int Port = 3000;
 	[Export] public string[] AllowedOrigins = Array.Empty<string>();
 
 	private readonly ConcurrentQueue<string> messages = new();
-	private McpInbox inbox;
-	private McpHttpTransport transport;
-	private McpObservationService observations;
+	private GameRequestInbox inbox;
+	private GameHttpTransport transport;
+	private GameObservationService observations;
 	private double simulationTime;
 
 	public override void _Ready()
 	{
 		ProcessPhysicsPriority = -1000;
-		inbox = new McpInbox();
-		observations = new McpObservationService(inbox, GetPlayer, () => simulationTime);
-		string bind = System.Environment.GetEnvironmentVariable("VOD_MCP_BIND") ?? BindAddress;
-		string portSetting = System.Environment.GetEnvironmentVariable("VOD_MCP_PORT");
-		string originsSetting = System.Environment.GetEnvironmentVariable("VOD_MCP_ORIGINS");
+		inbox = new GameRequestInbox();
+		observations = new GameObservationService(inbox, GetPlayer, () => simulationTime);
+		string bind = System.Environment.GetEnvironmentVariable("VOD_API_BIND") ?? BindAddress;
+		string portSetting = System.Environment.GetEnvironmentVariable("VOD_API_PORT");
+		string originsSetting = System.Environment.GetEnvironmentVariable("VOD_API_ORIGINS");
 		try
 		{
 			int port = portSetting == null ? Port : int.Parse(portSetting);
 			string[] origins = originsSetting == null ? AllowedOrigins
 				: originsSetting.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-			transport = new McpHttpTransport(inbox, origins, messages.Enqueue);
+			transport = new GameHttpTransport(inbox, origins, messages.Enqueue);
 			transport.Start(bind, port);
-			GD.Print($"MCP listening at http://{bind}:{port}/mcp");
+			GD.Print($"Game API listening at http://{bind}:{port}/api/v1/commands");
 		}
 		catch (Exception exception)
 		{
 			transport?.Dispose();
 			inbox.Shutdown();
-			GD.PushError($"MCP could not start: {exception.Message}");
+			GD.PushError($"Game API could not start: {exception.Message}");
 		}
 	}
 
@@ -43,7 +43,7 @@ public partial class McpServer : Node
 	{
 		simulationTime += delta;
 		var player = GetPlayer();
-		inbox.Drain(player != null, command => McpInstructionBridge.Execute(player.Instructions, command), observations.Request);
+		inbox.Drain(player != null, command => GameInstructionBridge.Execute(player.Instructions, command), observations.Request);
 	}
 
 	public override void _Process(double delta)
