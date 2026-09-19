@@ -7,11 +7,10 @@ from pydantic import BaseModel, Field
 load_dotenv()
 secret_key = os.getenv('BACKBOARD_APIKEY')
 
-
 questions = {
-    "speed": {
-        "type": "noul",
-        "instructions": "Speed for moving if moving is enabled",
+    "distance": {
+        "type": "choice",
+        "criteria": {str(a): f"{a} meters" for a in list(range(0, 100))},
     },
     "X-dir": {
         "type": "choice",
