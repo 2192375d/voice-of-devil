@@ -75,3 +75,5 @@ current = true
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=28198587]
 environment = SubResource("Environment_s5msr")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=714652640]
