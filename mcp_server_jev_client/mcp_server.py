@@ -23,7 +23,7 @@ async def hello(myinput : str) -> str :
 @mcp.tool()
 async def walk_forwards(meters: float) -> Observation :
 	"""
-	Walk forward the requested positive number of meters using the game timer.
+	Move the requested number of meters using the game timer; negative moves backward, zero does nothing.
 	"""
 	r = requests.post(f'http://{GAME_SERVER}/api/v1/commands', headers={'Content-Type':'application/json'}, json={"command":"walk_forward", "arguments":{"meters":meters}})
 	print(r.status_code)

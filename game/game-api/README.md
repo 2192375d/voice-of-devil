@@ -34,7 +34,7 @@ curl http://127.0.0.1:3000/api/v1/commands \
 
 | Command | Arguments | Behavior |
 | --- | --- | --- |
-| `walk_forward` | `{"meters":5}` | Positive finite meters; stops after `meters / speed` simulation seconds, even when blocked. Repeats return `already_running` without resetting the timer. |
+| `walk_forward` | `{"meters":5}` | Finite meters (negative moves backward, zero completes immediately); stops after `abs(meters) / speed` simulation seconds, even when blocked. Repeats return `already_running` without resetting the timer. |
 | `rotate` | `{"degrees":{"x":0,"y":90,"z":0}}` | Add relative yaw at fixed speed; positive Y turns right. X/Z must be zero; Y must be finite. |
 | `stop` | `{}` or omitted | Cancel all active actions; preserve pending requests and held item. |
 | `grab_item` | `{}` or omitted | Pick the nearest unobstructed item in the forward hemisphere; requires idle movement and empty hands. |

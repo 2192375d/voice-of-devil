@@ -42,9 +42,9 @@ public static class GameCommands
             if (arguments.ValueKind != JsonValueKind.Object || Count(arguments) != 1
                 || !arguments.TryGetProperty("meters", out var meters)
                 || meters.ValueKind != JsonValueKind.Number || !meters.TryGetDouble(out double distance)
-                || !double.IsFinite(distance) || distance <= 0)
+                || !double.IsFinite(distance))
             {
-                error = "walk_forward requires meters: a positive finite number.";
+                error = "walk_forward requires meters: a finite number (negative moves backward, zero does nothing).";
                 return false;
             }
             command = new GameCommand(name, Meters: distance);
