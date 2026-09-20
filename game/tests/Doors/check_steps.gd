@@ -54,7 +54,7 @@ func run():
     check(plate.IsPressed and player.is_on_floor(), "character walks onto actual pressure plate")
     check(door.IsOpen, "walking onto plate opens paired door")
     await walk(48)
-    await frames(45)
+    await frames(85)
     check(not plate.IsPressed and not door.IsOpen, "walking off plate closes door")
 
     box(world, Vector3(0, 9.5, 0), Vector3(20, 1, 20))

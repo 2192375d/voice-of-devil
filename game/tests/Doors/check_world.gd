@@ -29,7 +29,7 @@ func run():
     await settle()
     var opened = door.IsMoving
     print("Ground-level button started opening: ", opened)
-    for i in range(45):
+    for i in range(85):
         await physics_frame
     opened = opened and door.IsOpen
     print("Door fully opened: ", door.IsOpen)
@@ -40,7 +40,7 @@ func run():
     button.pressed.emit()
     await settle()
     var closing = door.IsMoving
-    for i in range(45):
+    for i in range(85):
         await physics_frame
     print("Button closing started: ", closing, "; fully closed: ", not door.IsOpen)
     quit(0 if opened and closing and not door.IsOpen else 1)

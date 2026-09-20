@@ -6,6 +6,7 @@ public partial class Door : AnimatableBody3D
     public const string GroupName = "interactable_doors";
     [Export] public float OpenAngleDegrees = 90.0f;
     [Export(PropertyHint.Range, "0.01,10,0.01")] public double MotionDuration = 0.6;
+    [Export(PropertyHint.Range, "0.01,10,0.01")] public double ClosingDuration = 1.2;
     [Export] public Vector3 HingePosition = new(-0.044947147f, 0, -0.4619959f);
 
     [Export] public bool PlateControlled = false;
@@ -13,6 +14,21 @@ public partial class Door : AnimatableBody3D
 
     public bool IsOpen { get; private set; }
     public bool IsMoving { get; private set; }
+    public bool IsClosed => progress == 0;
+    public DoorPair Pair { get; private set; }
+
+    public void AttachPair(DoorPair pair) => Pair = pair;
+
+    public void SetOpen(bool open, bool immediate = false)
+    {
+        opening = open;
+        if (immediate)
+        {
+            progress = open ? 1 : 0;
+            ApplyPose();
+        }
+        IsMoving = opening ? progress < 1 : progress > 0;
+    }
     public Vector3 GetInteractionPosition(Vector3 origin)
     {
         var halfSize = ((BoxShape3D)collider.Shape).Size * 0.5f;
@@ -39,7 +55,7 @@ public partial class Door : AnimatableBody3D
 
     public InstructionRequestResult TryInteract()
     {
-        if (PlateControlled)
+        if (PlateControlled || IsInstanceValid(Pair))
             return InstructionRequestResult.PlateControlled;
         if (IsMoving)
             return InstructionRequestResult.Busy;
@@ -51,11 +67,12 @@ public partial class Door : AnimatableBody3D
     }
 
     private bool HasValidMotion() => double.IsFinite(MotionDuration) && MotionDuration > 0
+        && double.IsFinite(ClosingDuration) && ClosingDuration > 0
         && float.IsFinite(OpenAngleDegrees) && OpenAngleDegrees != 0 && HingePosition.IsFinite();
 
     public override void _PhysicsProcess(double delta)
     {
-        if (PlateControlled)
+        if (PlateControlled && !IsInstanceValid(Pair))
         {
             opening = IsInstanceValid(ActivationPlate) && ActivationPlate.IsInsideTree()
                 && !ActivationPlate.IsQueuedForDeletion() && ActivationPlate.IsPressed;
@@ -63,7 +80,13 @@ public partial class Door : AnimatableBody3D
         }
         if (!IsMoving || !HasValidMotion())
             return;
-        progress = System.Math.Clamp(progress + (opening ? delta : -delta) / MotionDuration, 0, 1);
+        double duration = opening ? MotionDuration : ClosingDuration;
+        progress = System.Math.Clamp(progress + (opening ? delta : -delta) / duration, 0, 1);
+        ApplyPose();
+    }
+
+    private void ApplyPose()
+    {
         float angle = Mathf.DegToRad(OpenAngleDegrees) * (float)progress;
         var rotation = new Basis(Vector3.Up, angle);
         // Compose with the authored pose so scale and hinge remain fixed, even when reversing.

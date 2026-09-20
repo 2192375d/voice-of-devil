@@ -98,8 +98,10 @@ VOD_API_BIND=127.0.0.1 VOD_API_PORT=13091 godot-mono --headless --path . --scrip
 Characters and unheld rigid bodies count as weight; static scenery and held items
 do not. Any remaining weight keeps the plate active.
 
-Enable `PlateControlled` on a door and assign its `ActivationPlate` in the Inspector.
-The second room's `DoorLocked` is wired to its sibling `PressurePlate` this way.
+Assign a plate's exported `TargetDoor` in the Inspector. For an ordinary door this
+enables `PlateControlled` and binds its `ActivationPlate` automatically. Existing
+door-side `ActivationPlate` assignments remain supported. The second room's
+`PressurePlate` targets `DoorLocked`.
 Explicit node references keep pairs local without global group names. An unassigned
 or removed plate keeps the controlled door closed. Regular doors still toggle manually.
 
@@ -109,6 +111,28 @@ reversing smoothly if the weight changes mid-swing. Manual/API interaction retur
 
 Run `res://tests/Doors/check_plate.gd` with Godot headless to check the actual room's
 object, character, multiple weights, pickup/removal, reversal, and missing-plate behavior.
+
+### Orange/blue door pairs
+
+Add a `DoorPair` node and assign its exported `OrangeDoor` and `BlueDoor` references
+to two distinct doors. Each door must belong to only one controller. Orange starts
+fully open and blue fully closed. Assign each plate's `TargetDoor` to the door it
+should select. The world connects `PressurePlate2` to blue; orange is the unweighted default.
+
+A fresh press selects that door while its plate stays weighted. Releasing it selects
+the other weighted plate, or restores orange open / blue closed if neither is weighted.
+When both plates are weighted, the latest press wins. Sustained weight does not
+repeatedly select a door. If both
+plates are newly pressed in the same physics tick, the last plate processed wins
+(orange in the current scene). The controller closes the other door completely
+before opening the selected one, including when selection changes mid-animation.
+Doors open in `MotionDuration` (0.6 seconds) and close in `ClosingDuration` (1.2 seconds),
+both exported in the Inspector. Door colors are authored in material `albedo_color` fields.
+Manual interaction returns `plate_controlled`. During a swap both doors may be closed,
+but they are never open together. Separate controllers keep separate pairs independent.
+
+Run `res://tests/Doors/check_pair.gd` with Godot headless to verify the world wiring,
+initial poses, plate selection, release/reset, simultaneous weight, and animation interlock.
 
 ### Small steps
 

@@ -36,7 +36,7 @@ func command(action: String) -> String:
     return body.result.status
 
 func finish_motion():
-    for i in range(45):
+    for i in range(85):
         await physics_frame
     await settle()
 
