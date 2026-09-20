@@ -24,7 +24,7 @@ async def walk_forwards() -> dict :
 	Continue walking
 	"""
 
-	r = requests.post(f'http://{GAME_SERVER}/api/v1/commands',headers={'Content-Type':'application/json'}, json={"command":"walk_forward"})
+	r = requests.post(f'http://{GAME_SERVER}/api/v1/commands', headers={'Content-Type':'application/json'}, json={"command":"walk_forward"})
 	print(r.status_code)
 	return r.json()
 
