@@ -1,0 +1,12 @@
+res://world/Player.cs
+res://demo/data/assets.tres
+res://world/player.tscn
+res://cache/Cache.cs
+res://mcp-server/McpServer.cs
+res://world/AiCamera.cs
+res://world/InstructionControls.cs
+res://world/world.tscn
+res://world/Pickable.cs
+res://world/pickable.tscn
+res://instruction/instructions/InstructionMoveForward.cs
+res://game-api/GameApiServer.cs

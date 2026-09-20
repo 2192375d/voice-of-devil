@@ -7,4 +7,5 @@ public interface IInstructionTarget
     void ClearCommandedMovement();
     InstructionRequestResult TryGrabItem();
     InstructionRequestResult TryDropItem();
+    InstructionRequestResult TryInteract();
 }

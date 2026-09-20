@@ -5,9 +5,13 @@ public partial class Player : CharacterBody3D, IInstructionTarget
 {
 	[Export] public float Speed = 5.0f;
 	[Export] public float RotationSpeed = 90.0f;
-	[Export(PropertyHint.Range, "0.1,10,0.1")] public float PickupReach = 2.0f;
+	[Export(PropertyHint.Range, "0,1,0.05")] public float MaxStepHeight = 0.35f;
+	[Export(PropertyHint.Range, "0.1,10,0.1")] public float PickupReach = 5.0f;
 	[Export(PropertyHint.Layers3DPhysics)] public uint PickupObstacleMask = uint.MaxValue;
 	[Export(PropertyHint.Layers3DPhysics)] public uint DropObstacleMask = uint.MaxValue;
+
+	[Export(PropertyHint.Range, "0.1,10,0.1")] public float InteractionReach = 5.0f;
+	[Export(PropertyHint.Layers3DPhysics)] public uint InteractionObstacleMask = uint.MaxValue;
 
 	public Marker3D HoldPoint { get; private set; }
 	private Marker3D pickupOrigin;
@@ -42,8 +46,45 @@ public partial class Player : CharacterBody3D, IInstructionTarget
 		velocity.Z = walking.Z;
 		velocity += GetGravity() * (float)delta;
 
+		if (TryStepUp(walking * (float)delta))
+			velocity.Y = 0;
 		Velocity = velocity;
 		MoveAndSlide();
+		ApplyFloorSnap();
+	}
+
+	private bool TryStepUp(Vector3 motion)
+	{
+		if (!IsOnFloor() || Velocity.Y > 0 || motion.IsZeroApprox()
+			|| !float.IsFinite(MaxStepHeight) || MaxStepHeight <= 0)
+			return false;
+
+		Transform3D start = GlobalTransform;
+		if (!TestMove(start, motion))
+			return false;
+		// Sweep the full character up, across, and down: never step through a ceiling or wall.
+		Vector3 lift = Vector3.Up * MaxStepHeight;
+		if (TestMove(start, lift))
+			return false;
+		Transform3D raised = start;
+		raised.Origin += lift;
+		// Look past the capsule's rounded edge to find the tread, not its vertical riser.
+		float radius = GetNode<CollisionShape3D>("CollisionShape3D").Shape is CapsuleShape3D capsule
+			? capsule.Radius * Mathf.Max(GlobalBasis.X.Length(), GlobalBasis.Z.Length()) : 0;
+		Vector3 probe = motion.Normalized() * Mathf.Max(motion.Length(), radius + SafeMargin);
+		if (TestMove(raised, probe))
+			return false;
+		raised.Origin += probe;
+		var landing = new KinematicCollision3D();
+		if (!TestMove(raised, -lift, landing)
+			|| landing.GetNormal().Dot(Vector3.Up) < Mathf.Cos(FloorMaxAngle))
+			return false;
+		float rise = MaxStepHeight + landing.GetTravel().Y;
+		if (rise <= SafeMargin || rise > MaxStepHeight)
+			return false;
+		// Horizontal travel is still performed by MoveAndSlide below.
+		GlobalPosition += Vector3.Up * rise;
+		return true;
 	}
 
 	void IInstructionTarget.CommandWalkForward() => walkingCommanded = true;
@@ -58,6 +99,46 @@ public partial class Player : CharacterBody3D, IInstructionTarget
 	{
 		walkingCommanded = false;
 		Velocity = new Vector3(0, Velocity.Y, 0);
+	}
+
+	InstructionRequestResult IInstructionTarget.TryInteract()
+	{
+		if (!float.IsFinite(InteractionReach) || InteractionReach <= 0)
+			return InstructionRequestResult.InvalidArguments;
+
+		Vector3 origin = pickupOrigin.GlobalPosition;
+		Vector3 forward = -GlobalBasis.Z.Normalized();
+		var candidates = new List<(Door Door, Vector3 Position)>();
+		foreach (Node node in GetTree().GetNodesInGroup(Door.GroupName))
+		{
+			if (node is not Door door || door.IsQueuedForDeletion() || !door.IsInsideTree())
+				continue;
+			Vector3 position = door.GetInteractionPosition(origin);
+			Vector3 offset = position - origin;
+			if (offset.LengthSquared() <= InteractionReach * InteractionReach && forward.Dot(offset) >= 0)
+				candidates.Add((door, position));
+		}
+		candidates.Sort((a, b) =>
+		{
+			int order = a.Position.DistanceSquaredTo(origin)
+				.CompareTo(b.Position.DistanceSquaredTo(origin));
+			return order != 0 ? order : string.CompareOrdinal(a.Door.GetPath().ToString(), b.Door.GetPath().ToString());
+		});
+		var excluded = new Godot.Collections.Array<Rid> { GetRid() };
+		if (HeldItem is Pickable held)
+			excluded.Add(held.GetRid());
+		foreach (var candidate in candidates)
+		{
+			Door door = candidate.Door;
+			var ray = PhysicsRayQueryParameters3D.Create(origin, candidate.Position,
+				InteractionObstacleMask, excluded);
+			ray.HitFromInside = true;
+			var hit = GetWorld3D().DirectSpaceState.IntersectRay(ray);
+			if (hit.Count > 0 && hit["collider"].AsGodotObject() != door)
+				continue;
+			return door.TryInteract();
+		}
+		return InstructionRequestResult.NoInteractableInReach;
 	}
 
 	InstructionRequestResult IInstructionTarget.TryDropItem()

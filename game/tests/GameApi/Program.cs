@@ -102,6 +102,25 @@ static class Program
         Check(Status(await a.Task) == "shutdown" && Status(await b.Task) == "shutdown", "shutdown resolves outstanding calls");
         Check(Status(await limited.Submit("d", new("stop")).Task) == "shutdown", "shutdown rejects new calls");
 
+        var queuedInteraction = inbox.Submit("interaction-before-clear", new("interact"));
+        inbox.Submit("clear-interaction", new("clear_queue"));
+        inbox.Drain(true, Execute, Observe);
+        Check(Status(await queuedInteraction.Task) == "cancelled" && target.InteractCalls == 0,
+            "clear cancels queued interaction without touching door");
+        manager.Stop();
+        foreach (var outcome in new[] { InstructionRequestResult.Opening, InstructionRequestResult.Closing,
+            InstructionRequestResult.Busy, InstructionRequestResult.NoInteractableInReach, InstructionRequestResult.PlateControlled })
+        {
+            target.InteractResult = outcome;
+            var interaction = inbox.Submit("interact-" + outcome, new("interact"));
+            Check(inbox.PendingActionCount == 1, "interaction counts as queued action");
+            inbox.Drain(true, Execute, Observe);
+            var reply = await interaction.Task;
+            Check(Status(reply) == JsonNamingPolicy.SnakeCaseLower.ConvertName(outcome.ToString()), "interaction result dispatch");
+            Check(reply.IsError == (outcome is InstructionRequestResult.Busy or InstructionRequestResult.NoInteractableInReach or InstructionRequestResult.PlateControlled),
+                "interaction success and failure envelopes");
+        }
+
         var concurrent = new GameRequestInbox();
         var submitted = await Task.WhenAll(Enumerable.Range(0, 100).Select(i => Task.Run(() => concurrent.Submit(i.ToString(), new("walk_forward")))));
         int executed = 0;
@@ -141,6 +160,15 @@ static class Program
         inbox.Drain(true, _ => GameCommandResult.Status("busy", true), _ => { });
         var failure = await busy;
         Check(failure.StatusCode == 200 && !Body(failure).GetProperty("ok").GetBoolean(), "gameplay rejection is HTTP 200 with ok false");
+        Check((await protocol.HandleAsync(Call("interact", new { target = "door" }), "invalid-interact")).StatusCode == 400,
+            "interaction rejects arguments");
+        foreach (string payload in new[] { Call("interact"), "{\"command\":\"interact\"}" })
+        {
+            var interaction = protocol.HandleAsync(payload, "interact");
+            inbox.Drain(true, command => GameInstructionBridge.Execute(
+                new InstructionManager(new FakePlayer { InteractResult = InstructionRequestResult.Opening }), command), _ => { });
+            Check(Body(await interaction).GetProperty("ok").GetBoolean(), "interaction accepts empty or omitted arguments");
+        }
         var noArgs = protocol.HandleAsync("{\"command\":\"stop\"}", "stop");
         inbox.Drain(true, _ => GameCommandResult.Status("stopped"), _ => { });
         Check(Body(await noArgs).GetProperty("ok").GetBoolean(), "arguments can be omitted");
@@ -216,6 +244,9 @@ static class Program
         public void ApplyRightTurnDegrees(double degrees) { }
         public void ClearCommandedMovement() { }
         public InstructionRequestResult TryGrabItem() => InstructionRequestResult.NoItemInReach;
+        public InstructionRequestResult InteractResult { get; set; } = InstructionRequestResult.NoInteractableInReach;
+        public int InteractCalls { get; private set; }
+        public InstructionRequestResult TryInteract() { InteractCalls++; return InteractResult; }
         public InstructionRequestResult TryDropItem() => InstructionRequestResult.HandsEmpty;
     }
 }

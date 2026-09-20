@@ -45,7 +45,7 @@ class RotationDecision(StrictModel):
 
 
 class SimpleDecision(StrictModel):
-    action: Literal["walk_forward", "stop", "grab_item", "drop_item", "wait"]
+    action: Literal["walk_forward", "stop", "grab_item", "drop_item", "interact", "wait"]
     arguments: EmptyArguments = Field(default_factory=EmptyArguments)
 
 

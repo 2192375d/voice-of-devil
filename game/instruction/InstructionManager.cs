@@ -14,7 +14,11 @@ public enum InstructionRequestResult
     NoItemInReach,
     Dropped,
     HandsEmpty,
-    DropBlocked
+    DropBlocked,
+    Opening,
+    Closing,
+    NoInteractableInReach,
+    PlateControlled
 }
 
 /// <summary>
@@ -24,9 +28,9 @@ public enum InstructionRequestResult
 public sealed class InstructionManager
 {
     private readonly IInstructionTarget target;
-    private readonly List<SustainedAction> active = new();
+    private readonly List<InstructionSustained> active = new();
 
-    public IReadOnlyList<SustainedAction> ActiveInstructions { get; }
+    public IReadOnlyList<InstructionSustained> ActiveInstructions { get; }
     public Instruction LastFinishedInstruction { get; private set; }
 
     public InstructionManager(IInstructionTarget target)
@@ -86,6 +90,18 @@ public sealed class InstructionManager
             return InstructionRequestResult.Busy;
 
         var instruction = new InstructionDropItem();
+        var result = instruction.Perform(target);
+        LastFinishedInstruction = instruction;
+        return result;
+    }
+
+    /// <summary>Run on the physics tick because interaction checks line of sight.</summary>
+    public InstructionRequestResult Interact()
+    {
+        if (active.Count > 0)
+            return InstructionRequestResult.Busy;
+
+        var instruction = new InstructionInteract();
         var result = instruction.Perform(target);
         LastFinishedInstruction = instruction;
         return result;

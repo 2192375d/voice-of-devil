@@ -12,10 +12,12 @@ public static class GameInstructionBridge
             "stop" => manager.Stop(),
             "grab_item" => manager.GrabItem(),
             "drop_item" => manager.DropItem(),
+            "interact" => manager.Interact(),
             _ => InstructionRequestResult.InvalidArguments
         };
         bool success = result is InstructionRequestResult.Started or InstructionRequestResult.AlreadyRunning
-            or InstructionRequestResult.Stopped or InstructionRequestResult.PickedUp or InstructionRequestResult.Dropped;
+            or InstructionRequestResult.Stopped or InstructionRequestResult.PickedUp or InstructionRequestResult.Dropped
+            or InstructionRequestResult.Opening or InstructionRequestResult.Closing;
         return GameCommandResult.Status(JsonNamingPolicy.SnakeCaseLower.ConvertName(result.ToString()), !success);
     }
 }

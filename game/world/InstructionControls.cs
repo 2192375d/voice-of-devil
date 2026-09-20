@@ -6,6 +6,7 @@ public partial class InstructionControls : HBoxContainer
     private Player player;
     private bool pickupRequested;
     private bool dropRequested;
+    private bool interactRequested;
 
     public override void _Ready()
     {
@@ -16,17 +17,26 @@ public partial class InstructionControls : HBoxContainer
         {
             pickupRequested = false;
             dropRequested = false;
+            interactRequested = false;
             player.Instructions.Stop();
         };
         GetNode<Button>("PickUp").Pressed += () =>
         {
             pickupRequested = true;
             dropRequested = false;
+            interactRequested = false;
         };
         GetNode<Button>("Drop").Pressed += () =>
         {
             dropRequested = true;
             pickupRequested = false;
+            interactRequested = false;
+        };
+        GetNode<Button>("Interact").Pressed += () =>
+        {
+            interactRequested = true;
+            pickupRequested = false;
+            dropRequested = false;
         };
     }
 
@@ -41,6 +51,11 @@ public partial class InstructionControls : HBoxContainer
         {
             dropRequested = false;
             GD.Print($"Drop: {player.Instructions.DropItem()}");
+        }
+        else if (interactRequested)
+        {
+            interactRequested = false;
+            GD.Print($"Interact: {player.Instructions.Interact()}");
         }
     }
 }

@@ -79,7 +79,8 @@ An example decision is:
 }
 ```
 
-Actions are `walk_forward`, `rotate`, `stop`, `grab_item`, `drop_item`, and `wait`.
+Actions are `walk_forward`, `rotate`, `stop`, `grab_item`, `drop_item`, `interact`, and `wait`.
+`interact` toggles a nearby unobstructed door in front and requires idle movement.
 Rotation uses relative yaw from −180° to +180° in 2° increments; positive turns
 right. This sign is opposite Godot's world Y rotation. All other actions return
 empty arguments. `wait` means no proposed tool call and is not a Godot MCP tool.

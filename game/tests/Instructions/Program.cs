@@ -87,6 +87,29 @@ static class Program
         Check(manager.LastFinishedInstruction is InstructionDropItem drop
             && drop.Result == InstructionRequestResult.Dropped
             && drop.Status == InstructionStatus.Completed, "drop completion");
+        Check(manager.Interact() == InstructionRequestResult.NoInteractableInReach, "no nearby door");
+        Check(manager.LastFinishedInstruction is InstructionInteract
+            && manager.LastFinishedInstruction.Status == InstructionStatus.Failed, "failed interaction recorded");
+        foreach (var outcome in new[] { InstructionRequestResult.Opening, InstructionRequestResult.Closing })
+        {
+            target.InteractResult = outcome;
+            Check(manager.Interact() == outcome, "door motion starts");
+            Check(manager.LastFinishedInstruction is InstructionInteract interaction
+                && interaction.Result == outcome && interaction.Status == InstructionStatus.Completed,
+                "interaction completes after triggering door");
+            Check(manager.ActiveInstructions.Count == 0, "door owns motion");
+        }
+        target.InteractResult = InstructionRequestResult.Busy;
+        Check(manager.Interact() == InstructionRequestResult.Busy, "moving door is busy");
+        int interactionCalls = target.InteractCalls;
+        manager.WalkForward();
+        Check(manager.Interact() == InstructionRequestResult.Busy && target.InteractCalls == interactionCalls,
+            "walking rejects interaction before touching door");
+        manager.Stop();
+        manager.Rotate(new Vector3(0, 90, 0));
+        Check(manager.Interact() == InstructionRequestResult.Busy && target.InteractCalls == interactionCalls,
+            "rotation rejects interaction before touching door");
+        manager.Stop();
         Console.WriteLine("All instruction checks passed.");
     }
 
@@ -105,6 +128,9 @@ static class Program
         public int GrabCalls { get; private set; }
         public InstructionRequestResult DropResult { get; set; } = InstructionRequestResult.HandsEmpty;
         public int DropCalls { get; private set; }
+        public InstructionRequestResult InteractResult { get; set; } = InstructionRequestResult.NoInteractableInReach;
+        public int InteractCalls { get; private set; }
+        public InstructionRequestResult TryInteract() { InteractCalls++; return InteractResult; }
         public InstructionRequestResult TryDropItem()
         {
             DropCalls++;

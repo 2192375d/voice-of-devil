@@ -138,7 +138,7 @@ async def test_invalid_request_does_not_reach_providers(payload):
     h.send.assert_not_awaited()
 
 
-@pytest.mark.parametrize("action", ["walk_forward", "stop", "grab_item", "drop_item", "wait"])
+@pytest.mark.parametrize("action", ["walk_forward", "stop", "grab_item", "drop_item", "interact", "wait"])
 async def test_simple_decisions_are_returned_not_executed(action):
     h = Harness()
     h.send.return_value.system_one.answers = answers(action, yaw="unused")
