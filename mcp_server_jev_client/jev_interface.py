@@ -39,6 +39,11 @@ questions = {
             "stopped": "Stop moving forwards",
         },
     },
+    "movement_distance": {
+        "type": "choice",
+        "instructions": "Only if walking is selected in movement_action. How far to move backwards/forwards",
+        "criteria": {str(a): f"{a} degrees" for a in range(-10, 10)},
+    },
     "observe_action": {
         "type": "noul",
         "instructions": "Should we move the camera point?",
