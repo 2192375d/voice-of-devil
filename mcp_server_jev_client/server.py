@@ -25,8 +25,6 @@ async def agent_send_execute_loop(interface, user_prompt="", world_prompt=""):
         else:
             break
 
-import sys
-
 def flush_stdin():
     try:
         import termios
@@ -36,21 +34,15 @@ def flush_stdin():
 
 started = False  # was `false`
 
-
 async def execute_loop(interface):
-    # THREAD 2, execute each mcp call in the queue
+    # THREAD 2: the queue is now drained by mcp_server's worker thread
     last_sent = 0.0
     while True:
-        if mcp_server.requests_queue.qsize() != 0:
-            f = mcp_server.requests_queue.get()
-            print("EXECUTING: ", f)
-            f()
         if started and time.monotonic() - last_sent >= 1.0:
             last_sent = time.monotonic()
-            # send world state every 1s
             world_state = await mcp_server.observe()
             await agent_send_execute_loop(interface, "", world_state)
-        await asyncio.sleep(0.01)  # yield so the voice loop can run
+        await asyncio.sleep(0.01)
 
 async def voice_loop(interface, rec, transcriber):
     global started

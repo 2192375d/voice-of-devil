@@ -10,7 +10,7 @@ import sounddevice as sd
 
 TARGET_RATE = 16_000
 MIN_SECONDS = 0.15
-SILENCE_RMS = 0.0005  # RMS gate on float32 PCM in [-1, 1]; not a VAD
+SILENCE_RMS = 0.0015  # RMS gate on float32 PCM in [-1, 1]; not a VAD
 MAX_SECONDS = 30.0
 
 # ---------------------------------------------------------------- audio
