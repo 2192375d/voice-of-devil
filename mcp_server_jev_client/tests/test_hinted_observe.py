@@ -138,6 +138,31 @@ async def test_movement_does_not_request_vision(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_interrupt_control_wrappers_send_distinct_godot_commands(monkeypatch):
+    import mcp_server
+    commands = []
+
+    def handler(request):
+        commands.append(json.loads(request.content))
+        return httpx.Response(200, json={
+            "ok": True, "result": {"status": "stopped"}, "image": None})
+
+    factory = httpx.AsyncClient
+    monkeypatch.setattr(mcp_server.httpx, "AsyncClient", lambda **kwargs: factory(
+        **kwargs, transport=httpx.MockTransport(handler)))
+    await mcp_server.clear_queue()
+    await mcp_server.cancel_walk()
+    await mcp_server.cancel_rotation()
+    await mcp_server.stop_walking()
+    assert commands == [
+        {"command": "clear_queue", "arguments": {}},
+        {"command": "cancel_walk", "arguments": {}},
+        {"command": "cancel_rotation", "arguments": {}},
+        {"command": "stop", "arguments": {}},
+    ]
+
+
+@pytest.mark.asyncio
 async def test_mcp_returns_structured_observation(monkeypatch):
     import mcp_server
     world = {"observation_sequence": 42, "simulation_time": 12.5,

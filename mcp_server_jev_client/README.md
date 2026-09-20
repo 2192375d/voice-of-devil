@@ -26,8 +26,9 @@ or Gemini key is needed for voice commands.** `BACKBOARD_APIKEY` is still requir
 The existing Godot observation endpoint also captures a PNG, but Python discards
 it for this path; no image is sent to Jev. `vision` is explicitly `null`.
 
-Jev selects one of `walk_forward`, `walk_and_turn`, `stop`, `rotate`, `grab_item`,
-`drop_item`, `interact`, `done`, or `wait`. Actions with confidence at least 0.2
+Jev selects one of `walk_forward`, `walk_and_turn`, `stop`, `cancel_walk`,
+`cancel_rotation`, `rotate`, `grab_item`, `drop_item`, `interact`, `done`, or
+`wait`. Actions with confidence at least 0.2
 are accepted by default. A lower-confidence result or `wait` stops the loop and
 prints why; `done` reports success without sending a game command.
 
@@ -39,9 +40,27 @@ finish once a door is visible. It does not use Gemini or send screenshots to Jev
 The loop defaults to at most 10 actions or 60 seconds and never retries a failed
 command. Configure `JEV_MAX_GOAL_STEPS`, `JEV_MAX_GOAL_SECONDS`, and
 `JEV_MIN_ACTION_CONFIDENCE` if needed.
+
+Voice intake remains available while a goal runs. Pressing Enter to begin another
+recording pauses future autonomous decisions after 500 ms, while an already-active
+walk or turn may continue. A valid transcript supersedes the old goal; silence or
+failed transcription resumes it from fresh state. Pending transcripts are
+latest-wins rather than FIFO. Configure the delay with
+`VOICE_STEERING_DELAY_MS=500`.
+
+Ordinary steering preserves compatible motion. A new turn while walking keeps the
+walk; a new turn replaces only an existing rotation. Likewise, a new walk replaces
+only walking. Exact whole-transcript `stop`, `halt`, or `cancel` commands bypass
+Jev. Their priority lane sends an immediate best-effort clear and global stop,
+then repeats an ordered `clear_queue`-then-stop barrier after any in-flight request
+settles. A failed final barrier blocks further autonomous actions until a later
+takeover confirms a full clear-and-stop reconciliation. Near matches such as
+"don't stop" use normal Jev interpretation; a Jev-selected `stop` stops active
+movement but does not use the emergency priority lane.
 `walk_and_turn` submits walking and turning concurrently, for example "walk forward
 while turning right 90 degrees." A turn-only request can also overlap an existing
-walk without stopping or restarting it. Stop remains exclusive. The two combined
+walk without stopping or restarting it. Targeted cancellations can stop only walk
+or rotation. Global stop remains exclusive. The two combined
 requests are not atomic: if one fails, the other may already be running. Both
 outcomes are reported and neither is automatically retried.
 Walking defaults to 5 meters (about one second at default speed); supported
@@ -56,6 +75,12 @@ rejections are surfaced without automatic retry. If state/hints cannot answer a
 scene-dependent request, Jev is instructed to wait rather than invent details.
 The separate MCP `observe` tool still provides Gemini image summaries; its quota
 and background settings do not affect the standalone voice loop.
+
+Run only one action-producing controller for a player. Godot's inbox and movement
+state have no per-client ownership: every voice takeover globally clears older
+pending actions, and an exact hard stop affects shared active movement. Other
+clients may safely observe. Supporting multiple action writers requires owner or
+action IDs in the game API.
 
 ## Historical implementation (not current run instructions)
 

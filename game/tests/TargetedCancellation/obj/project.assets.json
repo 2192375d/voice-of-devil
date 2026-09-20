@@ -1,0 +1,102 @@
+{
+  "version": 3,
+  "targets": {
+    "net8.0": {
+      "GodotSharp/4.7.2": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/GodotSharp.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/GodotSharp.dll": {
+            "related": ".xml"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "GodotSharp/4.7.2": {
+      "sha512": "EPvfayB7b7MrBNdASvy86jRS5AbM9dprkVivcRD80g+ngn2M8KAIrBQH4NhyQL+pwxni0xVnuqhD9AFpZeNQpw==",
+      "type": "package",
+      "path": "godotsharp/4.7.2",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "godotsharp.4.7.2.nupkg.sha512",
+        "godotsharp.nuspec",
+        "lib/net8.0/GodotSharp.dll",
+        "lib/net8.0/GodotSharp.xml"
+      ]
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net8.0": [
+      "GodotSharp >= 4.7.2"
+    ]
+  },
+  "packageFolders": {
+    "/home/janky/.nuget/packages/": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "/home/janky/Projects/voice-of-devil/game/tests/TargetedCancellation/TargetedCancellation.csproj",
+      "projectName": "TargetedCancellation",
+      "projectPath": "/home/janky/Projects/voice-of-devil/game/tests/TargetedCancellation/TargetedCancellation.csproj",
+      "packagesPath": "/home/janky/.nuget/packages/",
+      "outputPath": "/home/janky/Projects/voice-of-devil/game/tests/TargetedCancellation/obj/",
+      "projectStyle": "PackageReference",
+      "configFilePaths": [
+        "/home/janky/.nuget/NuGet/NuGet.Config"
+      ],
+      "originalTargetFrameworks": [
+        "net8.0"
+      ],
+      "sources": {
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "projectReferences": {}
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      }
+    },
+    "frameworks": {
+      "net8.0": {
+        "targetAlias": "net8.0",
+        "dependencies": {
+          "GodotSharp": {
+            "target": "Package",
+            "version": "[4.7.2, )"
+          }
+        },
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "frameworkReferences": {
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          }
+        },
+        "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/8.0.131/PortableRuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}

@@ -11,6 +11,18 @@ compact action history accompany each fresh state. See
 for action dispatch. The Gemini pipeline below remains available to explicit MCP
 `observe` callers and benchmarks.
 
+Recording and goal execution run concurrently. Beginning a new Enter-based
+recording pauses future planning after `VOICE_STEERING_DELAY_MS` (500 ms by
+default). Valid transcripts replace the previous goal through a latest-wins
+mailbox; invalid recordings resume it. Compatible active movement is preserved,
+same-axis movement is replaced through targeted Godot controls, and exact `stop`,
+`halt`, or `cancel` transcripts clear pending work and stop both axes without Jev.
+The exact-stop path sends prompt controls outside the normal dispatch lock, then
+repeats an ordered clear-and-stop barrier after in-flight work settles. If that
+barrier cannot be confirmed, autonomous dispatch stays blocked until reconciliation.
+This assumes the voice supervisor is the only action-producing client for the
+player; Godot queue clearing and active movement are global, not client-owned.
+
 Godot supplies the unchanged 512×512 PNG, matching state, and approximate visible
 object hints. Gemini receives the PNG plus compact hint JSON and perception
 instructions. The voice goal is supplied separately to Jev; it is never passed
@@ -140,9 +152,8 @@ request, or zero for a completed cache hit. `total` measures complete observatio
 delivery; components need not sum when callers share background work. These are
 vision timings, not Jev decision or action-acknowledgment latency.
 
-The voice loop separately logs `transcript_to_action_loop_ms` (Godot state fetch
-through Jev and action acknowledgment) and `decision_action_ms`. These exclude
-recording and speech transcription and do not establish that movement physically
+The voice loop logs `decision_action_ms` for individual acknowledgments. It excludes
+recording and speech transcription and does not establish that movement physically
 completed. Each loop step executes one decision, allowing walking and turning
 together through the explicit `walk_and_turn` choice. There
 are no Gemini timings or Gemini quota gates in this path.

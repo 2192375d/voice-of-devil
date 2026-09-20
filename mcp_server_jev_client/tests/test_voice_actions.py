@@ -29,6 +29,8 @@ def voice_server(monkeypatch):
     ("walk_forward", {"meters": 5}, "walk_forwards", (5,)),
     ("walk_forward", {"meters": -2}, "walk_forwards", (-2,)),
     ("stop", {}, "stop_walking", ()),
+    ("cancel_walk", {}, "cancel_walk", ()),
+    ("cancel_rotation", {}, "cancel_rotation", ()),
     ("rotate", {"degrees": {"x": 0, "y": -90, "z": 0}}, "rotate", ()),
     ("grab_item", {}, "grab_item", ()),
     ("drop_item", {}, "drop_item", ()),
@@ -36,7 +38,8 @@ def voice_server(monkeypatch):
 ])
 async def test_only_selected_action_is_executed(voice_server, monkeypatch, action, arguments, tool, expected):
     tools = {}
-    for name in ("walk_forwards", "stop_walking", "rotate", "grab_item", "drop_item", "interact", "observe"):
+    for name in ("walk_forwards", "stop_walking", "cancel_walk", "cancel_rotation",
+                 "rotate", "grab_item", "drop_item", "interact", "observe"):
         tools[name] = AsyncMock(return_value={"ok": True, "result": {"status": "started"}})
         monkeypatch.setattr(mcp_server, name, tools[name])
     interface = SimpleNamespace(send_req=AsyncMock(return_value={
@@ -177,6 +180,39 @@ async def test_turn_preserves_existing_walk(voice_server, monkeypatch):
     turn.assert_awaited_once_with(x=0, y=-90, z=0)
     walk.assert_not_awaited()
     stop.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("action,active_type,cancel_name,kept_cancel", [
+    ("walk_forward", "walk_forward", "cancel_walk", "cancel_rotation"),
+    ("rotate", "rotate", "cancel_rotation", "cancel_walk"),
+])
+async def test_new_movement_replaces_only_same_active_axis(
+    voice_server, monkeypatch, action, active_type, cancel_name, kept_cancel,
+):
+    monkeypatch.setattr(mcp_server, "walk_forwards", AsyncMock(
+        return_value={"ok": True, "result": {"status": "started"}}))
+    monkeypatch.setattr(mcp_server, "rotate", AsyncMock(
+        return_value={"ok": True, "result": {"status": "started"}}))
+    cancelled = AsyncMock(return_value={"ok": True, "result": {"status": "stopped"}})
+    preserved = AsyncMock()
+    monkeypatch.setattr(mcp_server, cancel_name, cancelled)
+    monkeypatch.setattr(mcp_server, kept_cancel, preserved)
+    arguments = ({"meters": -5} if action == "walk_forward"
+                 else {"degrees": {"x": 0, "y": 40, "z": 0}})
+    interface = SimpleNamespace(send_req=AsyncMock(return_value={
+        "action": action, "confidence": 0.9, "arguments": arguments}))
+    state = {"game_state": {"active_instructions": [
+        {"type": active_type, "status": "running"},
+        {"type": "rotate" if active_type == "walk_forward" else "walk_forward",
+         "status": "running"},
+    ]}, "vision": None}
+
+    await voice_server.agent_send_execute_loop(
+        interface, "steer differently", state, max_steps=1)
+
+    cancelled.assert_awaited_once_with()
+    preserved.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -339,17 +375,16 @@ async def test_voice_entrypoint_uses_only_godot_state(voice_server, monkeypatch)
     recorder = SimpleNamespace(start=Mock(), stop=Mock(return_value=object()), close=Mock())
     voice_server.voice = SimpleNamespace(Recorder=lambda: recorder, TARGET_RATE=16000,
         load_transcriber=lambda: Mock(), process=Mock(return_value="walk forward"))
-    monkeypatch.setattr(voice_server, "flush_stdin", lambda: None)
     interface = object()
     monkeypatch.setattr(voice_server.jev_interface, "JevInterface", lambda: interface)
-    state = {"game_state": {"active_instructions": []}, "vision": None}
-    get_state = AsyncMock(return_value=state)
-    monkeypatch.setattr(mcp_server, "get_game_state", get_state)
     vision = AsyncMock(side_effect=AssertionError("No Gemini in voice loop"))
     monkeypatch.setattr(mcp_server, "observe", vision)
     monkeypatch.setattr(mcp_server, "start_vision_service", vision)
-    decide = AsyncMock()
-    monkeypatch.setattr(voice_server, "agent_send_execute_loop", decide)
+    supervisor = SimpleNamespace(
+        start=Mock(), begin_recording=Mock(return_value=7),
+        submit=Mock(), resume_after_invalid=Mock(), aclose=AsyncMock())
+    factory = Mock(return_value=supervisor)
+    monkeypatch.setattr(voice_server, "GoalSupervisor", factory)
     inputs = iter(["", ""])
     def answer(_):
         try:
@@ -359,7 +394,11 @@ async def test_voice_entrypoint_uses_only_godot_state(voice_server, monkeypatch)
     monkeypatch.setattr("builtins.input", answer)
     with pytest.raises(EOFError):
         await voice_server.main()
-    get_state.assert_awaited_once()
-    decide.assert_awaited_once_with(interface, "walk forward", state)
+    factory.assert_called_once_with(
+        interface, voice_server.agent_send_execute_loop, game=mcp_server,
+        reaction_delay=0.5)
+    supervisor.start.assert_called_once()
+    supervisor.submit.assert_called_once_with("walk forward", 7)
+    supervisor.aclose.assert_awaited_once_with(stop_game=True)
     vision.assert_not_awaited()
     recorder.close.assert_called_once()

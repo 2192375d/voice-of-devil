@@ -125,39 +125,22 @@ async def test_quota_deferral_is_mcp_error_not_fake_observation(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_voice_loop_continues_after_state_failure(monkeypatch, capsys):
-    import importlib.util
-    recorder = SimpleNamespace(start=Mock(), stop=Mock(return_value=object()), close=Mock())
-    fake_voice = SimpleNamespace(Recorder=lambda: recorder, TARGET_RATE=16000,
-                                load_transcriber=lambda: Mock(), process=Mock(return_value="look ahead"))
-    monkeypatch.setitem(sys.modules, "voice", fake_voice)
-    spec = importlib.util.spec_from_file_location("quota_test_voice_server", Path(__file__).parents[1] / "server.py")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    monkeypatch.setattr(module, "flush_stdin", lambda: None)
-    monkeypatch.setattr(module.jev_interface, "JevInterface", Mock())
-    start = AsyncMock()
-    monkeypatch.setattr(module.mcp_server, "start_vision_service", start)
-    stop = AsyncMock()
-    monkeypatch.setattr(module.mcp_server, "stop_vision_service", stop)
-    observe = AsyncMock(side_effect=ValueError("Godot unavailable"))
-    monkeypatch.setattr(module.mcp_server, "get_game_state", observe)
+    from voice_controller import GoalSupervisor
+
+    game = SimpleNamespace(
+        clear_queue=AsyncMock(return_value={"ok": True}),
+        stop_walking=AsyncMock(return_value={"ok": True}),
+        get_game_state=AsyncMock(side_effect=ValueError("Godot unavailable")),
+    )
     decide = AsyncMock()
-    monkeypatch.setattr(module, "agent_send_execute_loop", decide)
-    inputs = iter(["", ""])
-    prompts = []
-    def answer(prompt):
-        prompts.append(prompt)
-        try:
-            return next(inputs)
-        except StopIteration:
-            raise EOFError("end test after returning to record prompt")
-    monkeypatch.setattr("builtins.input", answer)
-    with pytest.raises(EOFError):
-        await module.main()
-    assert len(prompts) == 3
-    observe.assert_awaited_once()
+    supervisor = GoalSupervisor(object(), decide, game=game, reaction_delay=0)
+    supervisor.start()
+    token = supervisor.begin_recording()
+    supervisor.submit("look ahead", token)
+    await asyncio.wait_for(supervisor._mailbox.join(), timeout=1)
+    await supervisor.aclose(stop_game=False)
+
+    game.clear_queue.assert_awaited_once()
+    game.get_game_state.assert_awaited_once()
     decide.assert_not_awaited()
-    start.assert_not_awaited()
-    stop.assert_not_awaited()
-    recorder.close.assert_called_once()
-    assert "No automatic retry" in capsys.readouterr().out
+    assert "No replacement action was sent" in capsys.readouterr().out

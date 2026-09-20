@@ -30,6 +30,10 @@ curl http://127.0.0.1:3000/api/v1/commands \
 curl http://127.0.0.1:3000/api/v1/commands \
   -H 'Content-Type: application/json' \
   -d '{"command":"stop"}'
+
+curl http://127.0.0.1:3000/api/v1/commands \
+  -H 'Content-Type: application/json' \
+  -d '{"command":"cancel_rotation"}'
 ```
 
 | Command | Arguments | Behavior |
@@ -37,11 +41,13 @@ curl http://127.0.0.1:3000/api/v1/commands \
 | `walk_forward` | `{"meters":5}` | Finite meters (negative moves backward, zero completes immediately); stops after `abs(meters) / speed` simulation seconds, even when blocked. Repeats return `already_running` without resetting the timer. |
 | `rotate` | `{"degrees":{"x":0,"y":90,"z":0}}` | Add relative yaw at fixed speed; positive Y turns right. X/Z must be zero; Y must be finite. |
 | `stop` | `{}` or omitted | Cancel all active actions; preserve pending requests and held item. |
+| `cancel_walk` | `{}` or omitted | Idempotently cancel active walking while preserving rotation and pending requests. |
+| `cancel_rotation` | `{}` or omitted | Idempotently cancel active rotation while preserving walking and pending requests. |
 | `grab_item` | `{}` or omitted | Pick the nearest unobstructed item in the forward hemisphere; requires idle movement and empty hands. |
 | `interact` | `{}` or omitted | Toggle the nearest unobstructed door in front within 5 units; requires idle movement. Returns `opening`, `closing`, `busy`, `no_interactable_in_reach`, or `plate_controlled` (door follows its pressure plate automatically). |
 | `drop_item` | `{}` or omitted | Release the held item if space is clear; requires idle movement. |
 | `observe` | `{}` or omitted | Return a 512×512 first-person PNG with matching state. |
-| `clear_queue` | `{}` or omitted | Cancel earlier pending action requests, preserving active actions, observations, and later requests. |
+| `clear_queue` | `{}` or omitted | Cancel earlier pending action requests across all clients, preserving active actions, observations, and later requests. There is no ownership isolation. |
 
 For pickup, drop, observation, and clearing:
 
@@ -128,12 +134,22 @@ python3 -c 'import base64,json,pathlib; r=json.loads(pathlib.Path("/tmp/observat
 
 HTTP handlers validate and enqueue; only Godot's main thread invokes instructions.
 There is one inbox in Godot, capacity 256, with up to 64 ordinary requests dispatched
-per physics tick. `stop` and `clear_queue` run before ordinary requests, in arrival
-order relative to each other. New arrivals during dispatch wait for the next tick.
+per physics tick. `stop`, `cancel_walk`, `cancel_rotation`, and `clear_queue` run before
+ordinary requests, in arrival order relative to each other. This lets a targeted
+cancel replace an active movement axis before a new ordinary request starts on the
+same tick. New arrivals during dispatch wait for the next tick.
+
+The inbox and player are global. `clear_queue` can cancel older pending actions
+submitted by any client, and stop/cancel controls affect shared active movement.
+Use a single action-producing client unless a future protocol adds owner/action IDs;
+additional observation-only clients are safe.
 
 **A pending action can start after `stop`.** To discard pending work and stop active
 actions, await `clear_queue`'s response, then call `stop`. Clearing cancels only
 older pending walk/rotate/grab/drop/interact requests; their responses report `cancelled`.
+The targeted cancellation commands have the same pending-request behavior as `stop`:
+they affect only the selected active axis. Await `clear_queue` first when older pending
+requests for that axis must not start afterward.
 
 Undispatched requests expire after 10 seconds and cannot execute afterward.
 Observations also time out after 10 seconds without a usable frame. Body reads
@@ -141,7 +157,7 @@ have a separate 10-second deadline. Shutdown resolves outstanding requests.
 There is no individual request-cancellation endpoint. Disconnecting does not undo
 an accepted action, and losing the Python connection does not cancel an accepted walk; its game-side timer still stops it.
 
-The future Python adapter should forward requests concurrently so `observe` cannot
+Python adapters should forward requests concurrently so `observe` cannot
 block `stop`, inspect both HTTP status and `ok`, and package observation image/state
 for MCP. Use a response timeout longer than the game's 10-second deadline. Do not
 automatically retry actions after an ambiguous connection failure: retrying a
@@ -151,11 +167,11 @@ relative rotation can turn twice. Reconnect and observe to decide the next actio
 
 ```sh
 dotnet build
-DOTNET_ROLL_FORWARD=Major dotnet run --project tests/Instructions/Instructions.csproj
-DOTNET_ROLL_FORWARD=Major dotnet run --project tests/GameApi/GameApi.csproj
+DOTNET_ROLL_FORWARD=Major dotnet run --project tests/TargetedCancellation/TargetedCancellation.csproj
 ```
 
 Roll-forward is needed only when .NET 8 is absent and a newer runtime is installed.
-The API tests cover the real HTTP listener, validation, envelopes, inbox priority,
-concurrency, expiry, and shutdown with a fake player. Rendered-game checks are
-needed for screenshots, actual movement, pickup, and collision-dependent drop.
+The targeted checks cover cancellation preservation/idempotency, strict command
+parsing, response status, and control priority with a fake player. Rendered-game
+checks are still needed for screenshots, actual movement, pickup, and
+collision-dependent drop.

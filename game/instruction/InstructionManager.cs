@@ -130,6 +130,23 @@ public sealed class InstructionManager
         return InstructionRequestResult.Stopped;
     }
 
+    /// <summary>Cancel only forward/backward movement, preserving active rotation.</summary>
+    public InstructionRequestResult CancelWalk()
+    {
+        Cancel<InstructionMoveForward>();
+        // Clear the current tick's commanded velocity immediately. Rotation does
+        // not depend on horizontal velocity and remains active.
+        target.ClearCommandedMovement();
+        return InstructionRequestResult.Stopped;
+    }
+
+    /// <summary>Cancel only rotation, preserving active forward/backward movement.</summary>
+    public InstructionRequestResult CancelRotation()
+    {
+        Cancel<InstructionRotate>();
+        return InstructionRequestResult.Stopped;
+    }
+
     public void PhysicsUpdate(double delta)
     {
         if (!double.IsFinite(delta) || delta < 0)
@@ -151,5 +168,18 @@ public sealed class InstructionManager
             instruction.Cancel();
         active.Clear();
         target.ClearCommandedMovement();
+    }
+
+    private void Cancel<TInstruction>() where TInstruction : InstructionSustained
+    {
+        for (int index = active.Count - 1; index >= 0; index--)
+        {
+            if (active[index] is not TInstruction instruction)
+                continue;
+
+            instruction.Cancel();
+            active.RemoveAt(index);
+            LastFinishedInstruction = instruction;
+        }
     }
 }

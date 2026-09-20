@@ -1,0 +1,41 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v8.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v8.0": {
+      "TargetedCancellation/1.0.0": {
+        "dependencies": {
+          "GodotSharp": "4.7.2"
+        },
+        "runtime": {
+          "TargetedCancellation.dll": {}
+        }
+      },
+      "GodotSharp/4.7.2": {
+        "runtime": {
+          "lib/net8.0/GodotSharp.dll": {
+            "assemblyVersion": "4.7.2.0",
+            "fileVersion": "4.7.2.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "TargetedCancellation/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "GodotSharp/4.7.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-EPvfayB7b7MrBNdASvy86jRS5AbM9dprkVivcRD80g+ngn2M8KAIrBQH4NhyQL+pwxni0xVnuqhD9AFpZeNQpw==",
+      "path": "godotsharp/4.7.2",
+      "hashPath": "godotsharp.4.7.2.nupkg.sha512"
+    }
+  }
+}

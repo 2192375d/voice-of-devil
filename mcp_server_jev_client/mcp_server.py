@@ -83,11 +83,21 @@ async def stop_walking() -> dict :
 @mcp.tool()
 async def clear_queue() :
 	"""
-	Continue walking
+	Cancel older Godot action requests that have not started yet.
 	"""
+	return await send_game_command("clear_queue")
 
-	await stop_walking()
-	return "DONE" 
+
+@mcp.tool()
+async def cancel_walk() -> dict:
+	"""Cancel active walking without cancelling rotation."""
+	return await send_game_command("cancel_walk")
+
+
+@mcp.tool()
+async def cancel_rotation() -> dict:
+	"""Cancel active rotation without cancelling walking."""
+	return await send_game_command("cancel_rotation")
 
 async def observe() -> dict[str, Any]:
 	"""Return fresh game state and Gemini's exact-frame interpretation."""

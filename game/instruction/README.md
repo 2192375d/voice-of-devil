@@ -5,6 +5,8 @@ After the player is ready, call its manager on Godot's main thread:
 ```csharp
 player.Instructions.WalkForward(5); // meters
 player.Instructions.Rotate(new Vector3(0, 90, 0));
+player.Instructions.CancelWalk(); // preserve rotation
+player.Instructions.CancelRotation(); // preserve walking
 player.Instructions.Stop();
 ```
 
@@ -22,6 +24,10 @@ Requests return `InstructionRequestResult`. Repeated walking returns
 `AlreadyRunning`; rotation while another rotation is active returns `Busy`.
 Zero rotation completes immediately. Stop cancels both actions, clears horizontal
 movement immediately, and leaves gravity running.
+
+`CancelWalk()` and `CancelRotation()` are idempotent targeted controls. Both return
+`Stopped` whether or not their axis is active. Canceling walking clears horizontal
+movement immediately but preserves rotation; canceling rotation preserves walking.
 
 Walking and rotation both derive from `InstructionSustained`. Rotation inherits
 through `Instruction<Vector3>` and runs across physics ticks until its requested

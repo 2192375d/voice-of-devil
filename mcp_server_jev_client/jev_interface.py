@@ -28,6 +28,9 @@ walk_forward is a timed move, default 5 meters, NOT continuous walking. Negative
 meters move backward. A completed movement timer does not prove actual displacement.
 stop cancels movement and rotation. rotate is relative yaw only: positive turns right,
 negative turns left. No pitch or roll. Never rotate merely because walking was requested.
+cancel_walk stops only walking and preserves rotation. cancel_rotation stops only
+rotation and preserves walking. Use these when the operator explicitly asks to stop
+one movement axis while keeping the other.
 Choose the turn magnitude from the operator's request and the available Godot state;
 there is no fixed default angle. Honor an explicitly requested angle using the nearest
 supported value. Otherwise choose an appropriate relative turn toward the requested
@@ -35,10 +38,10 @@ direction or goal. Object hints are approximate, not exact world bearings; do no
 invent precise target geometry. Choose wait if essential information is missing.
 Walking and rotation CAN overlap. For "walk forward while turning right", select
 walk_and_turn with both meters and yaw_degrees. For a turn when already walking,
-select rotate only: this preserves the ongoing walk without restarting it.
-For walking when already rotating, select walk_forward only. Do not select wait
-merely because the OTHER kind of movement is active. Do not start a second rotation
-while a rotation is running, or restart a walk that is already running.
+select rotate only: this preserves the ongoing walk. For walking when already
+rotating, select walk_forward only. A newly selected walk or rotation replaces an
+active instruction of that SAME kind without affecting the other kind. Do not select
+wait merely because movement is active.
 Grab/drop/interact require idle movement; choose stop first if necessary. Grab needs
 empty hands and a nearby unobstructed item; drop needs a held item and clear space.
 Consider active_instructions and held_item. Choose wait if uncertain or the requested
@@ -57,6 +60,8 @@ questions = {
             "walk_forward": "Walk forward or backward a fixed distance",
             "walk_and_turn": "Walk a fixed distance and turn at the same time",
             "stop": "Stop walking and rotating",
+            "cancel_walk": "Stop walking but preserve an active rotation",
+            "cancel_rotation": "Stop rotating but preserve an active walk",
             "rotate": "Turn left or right by a relative yaw angle",
             "grab_item": "Pick up an item",
             "drop_item": "Drop the held item",

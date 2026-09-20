@@ -10,6 +10,8 @@ public static class GameInstructionBridge
             "walk_forward" => manager.WalkForward(command.Meters),
             "rotate" => manager.Rotate(new Vector3(0, command.YDegrees, 0)),
             "stop" => manager.Stop(),
+            "cancel_walk" => manager.CancelWalk(),
+            "cancel_rotation" => manager.CancelRotation(),
             "grab_item" => manager.GrabItem(),
             "drop_item" => manager.DropItem(),
             "interact" => manager.Interact(),

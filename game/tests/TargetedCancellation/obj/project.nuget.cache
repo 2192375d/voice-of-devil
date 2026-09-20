@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "DaaMyp5gyfXutFxGQTdQGaQFcAYVZvwEgN2h16YwOSVMHHAP+K1TpbgLC0x1iWhEJ++5MrbtiwfZ1AueUxRnzQ==",
+  "success": true,
+  "projectFilePath": "/home/janky/Projects/voice-of-devil/game/tests/TargetedCancellation/TargetedCancellation.csproj",
+  "expectedPackageFiles": [
+    "/home/janky/.nuget/packages/godotsharp/4.7.2/godotsharp.4.7.2.nupkg.sha512"
+  ],
+  "logs": []
+}
