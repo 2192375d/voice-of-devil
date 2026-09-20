@@ -1,5 +1,11 @@
 # Godot observation and voice-command service
 
+**Current checkout:** the executable entrypoints are the root-level `mcp_server.py`
+(stdio MCP) and `server.py` (voice loop). See [hinted observations](OBSERVATIONS.md)
+for their current data flow, structured `observe()` output, tests, and benchmark.
+The HTTP service/package instructions below describe an earlier implementation;
+the referenced package source files are not present in this checkout.
+
 `POST /observe` fetches a first-person frame through Godot's HTTP command API, summarizes
 it with `gemini-3.5-flash`, and asks `jev-latest` for a decision through Backboard.
 It **returns the decision without executing it**. The only game command it sends is

@@ -4,7 +4,8 @@ using Godot;
 
 public static class GameState
 {
-    public static object Snapshot(Player player, AiCamera camera, long sequence, double simulationTime, int pendingActions)
+    public static object Snapshot(Player player, AiCamera camera, long sequence, double simulationTime, int pendingActions,
+        object hints = null)
     {
         var item = player.HeldItem;
         return new
@@ -12,6 +13,7 @@ public static class GameState
             status = "observed",
             observation_sequence = sequence,
             simulation_time = simulationTime,
+            hints,
             position = Vector(player.GlobalPosition),
             rotation_degrees = Vector(player.GlobalRotationDegrees),
             velocity = Vector(player.Velocity),

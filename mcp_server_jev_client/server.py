@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import jev_interface
 import mcp_server
 import voice
@@ -63,4 +64,5 @@ async def main():
         rec.close()
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     asyncio.run(main())

@@ -97,6 +97,7 @@ An observation returns `result.status: "observed"`, plus these fields in `result
 | `active_instructions` | Array of instruction progress objects. |
 | `pending_action_count` | Number of undispatched action requests. |
 | `last_finished_instruction` | Latest finished instruction progress object, or `null`. |
+| `hints` | Approximate Godot visual hints: `{source: "godot", bbox_format: "normalized_xyxy", objects: [{id, label, bbox}]}`; `null` if unavailable or invalidated before rendering. |
 
 Instruction objects contain `type`, `status`, `elapsed_seconds`,
 `requested_degrees`, `remaining_degrees`, and `result`; nonapplicable fields are
@@ -107,6 +108,11 @@ Godot world yaw.
 `image` is `{"mime_type":"image/png","data":"<base64 PNG>"}`. State is sampled
 before rendering and PNG read after that same frame; gameplay continues throughout.
 A headless instance returns `observation_error` because screenshots require rendering.
+
+Hints cover visible pickables, doors, and pressure plates with approximate
+occlusion filtering. They contain no puzzle connections or exact distances.
+See [hinted observations](../../mcp_server_jev_client/OBSERVATIONS.md) for frame
+alignment, limitations, Python output changes, and benchmark instructions.
 
 Save and decode an observation (Python standard library only; this is a calling
 example, not a Python MCP implementation):

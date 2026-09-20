@@ -1,13 +1,15 @@
 import httpx
+import logging
+from typing import Any
 import gemini_input
-from gemini_input import Observation
+from observation import observe_world
 import requests
 from mcp.server.mcpserver import MCPServer
 #import jev_interface
 import asyncio
 
 mcp = MCPServer("myserver")
-gemini_vision = gemini_input.GeminiVision()
+gemini_vision = None
 GAME_SERVER="127.0.0.1:3000"
 
 @mcp.tool()
@@ -21,14 +23,13 @@ async def hello(myinput : str) -> str :
 	"""
 
 @mcp.tool()
-async def walk_forwards(meters: float) -> Observation :
+async def walk_forwards(meters: float) -> dict :
 	"""
 	Move the requested number of meters using the game timer; negative moves backward, zero does nothing.
 	"""
 	r = requests.post(f'http://{GAME_SERVER}/api/v1/commands', headers={'Content-Type':'application/json'}, json={"command":"walk_forward", "arguments":{"meters":meters}})
-	print(r.status_code)
-	# return r.json()["resource"]
-	return gemini_vision.summarize(r.json()["image"])
+	r.raise_for_status()
+	return r.json()
 
 @mcp.tool()
 async def stop_walking() -> dict :
@@ -49,22 +50,15 @@ async def clear_queue() :
 	await stop_walking()
 	return "DONE" 
 
-@mcp.tool()
-async def observe() -> dict :
-	"""
-	Continue walking
-	"""
-
-	r = requests.post(f'http://{GAME_SERVER}/api/v1/commands',headers={'Content-Type':'application/json'}, json={"command":"observe"})
-	image_desc = await gemini_vision.summarize(str(r.json()["image"]["data"]))
-	#return r.json()
-	#return r.json()["image"]
-	return f"""
-	## World Metrics
-	{r.json()['result']}
-	## World Description
-	{image_desc}
-	"""
+@mcp.tool(structured_output=True)
+async def observe() -> dict[str, Any]:
+	"""Return current game state and Gemini's interpretation of the hinted screenshot."""
+	global gemini_vision
+	if gemini_vision is None:
+		gemini_vision = gemini_input.GeminiVision()
+	# Close the game connection after each observation in both CLI and MCP use.
+	async with httpx.AsyncClient(timeout=15.0) as client:
+		return await observe_world(client, GAME_SERVER, gemini_vision)
 
 @mcp.tool()
 async def grab_item() -> dict :
@@ -99,4 +93,5 @@ async def rotate(x:int=0, y:int=90, z:int=0) -> dict :
 #asyncio.run(walk_forwards(5))
 
 if __name__ == "__main__":
+	logging.basicConfig(level=logging.INFO)
 	mcp.run(transport="stdio")
