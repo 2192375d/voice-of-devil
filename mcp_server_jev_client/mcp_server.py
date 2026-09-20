@@ -56,8 +56,15 @@ async def observe() -> dict :
 	"""
 
 	r = requests.post(f'http://{GAME_SERVER}/api/v1/commands',headers={'Content-Type':'application/json'}, json={"command":"observe"})
-	print(r.status_code)
-	return r.json()['result']
+	image_desc = await gemini_vision.summarize(str(r.json()["image"]["data"]))
+	#return r.json()
+	#return r.json()["image"]
+	return f"""
+	## World Metrics
+	{r.json()['result']}
+	## World Description
+	{image_desc}
+	"""
 
 @mcp.tool()
 async def grab_item() -> dict :
@@ -87,7 +94,6 @@ async def rotate(x:int=0, y:int=90, z:int=0) -> dict :
 
 	r = requests.post(f'http://{GAME_SERVER}/api/v1/commands',headers={'Content-Type':'application/json'}, json={"command":"rotate","arguments":{"degrees":{"x":x,"y":y,"z":z}}})
 	print(r.status_code)
-	breakpoint()
 	return r.json()
 
 #asyncio.run(walk_forwards())

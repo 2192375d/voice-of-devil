@@ -43,6 +43,7 @@ async def main():
     print("SERVER LOOP STARTED")
     try:
         while True:
+            
             flush_stdin()  # drop anything typed while we were busy
             
             await asyncio.to_thread(input, "[Enter] record")
@@ -55,8 +56,8 @@ async def main():
             if not user_text:
                 continue
             print("USER TEXT:", user_text)
-
             world_state = await mcp_server.observe()
+
             await agent_send_execute_loop(interface, user_text, world_state)
     finally:
         rec.close()
