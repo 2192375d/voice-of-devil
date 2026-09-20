@@ -21,7 +21,7 @@ public abstract class Instruction
     }
 }
 
-public abstract class SustainedAction : Instruction
+public abstract class InstructionSustained : Instruction
 {
     public double ElapsedSeconds { get; private set; }
 
@@ -38,7 +38,7 @@ public abstract class SustainedAction : Instruction
 }
 
 /// <summary>A sustained action with strongly typed, immutable arguments.</summary>
-public abstract class Instruction<T> : SustainedAction
+public abstract class Instruction<T> : InstructionSustained
 {
     public T Arguments { get; }
 

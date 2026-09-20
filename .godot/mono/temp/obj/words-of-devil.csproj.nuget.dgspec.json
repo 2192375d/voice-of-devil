@@ -1,0 +1,95 @@
+{
+  "format": 1,
+  "restore": {
+    "/home/archmiere/Documents/game-dev/voice-of-devil/words-of-devil.csproj": {}
+  },
+  "projects": {
+    "/home/archmiere/Documents/game-dev/voice-of-devil/words-of-devil.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/archmiere/Documents/game-dev/voice-of-devil/words-of-devil.csproj",
+        "projectName": "words-of-devil",
+        "projectPath": "/home/archmiere/Documents/game-dev/voice-of-devil/words-of-devil.csproj",
+        "packagesPath": "/home/archmiere/.nuget/packages/",
+        "outputPath": "/home/archmiere/Documents/game-dev/voice-of-devil/.godot/mono/temp/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/archmiere/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "10.0.100"
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "Godot.SourceGenerators": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[4.7.2, )",
+              "autoReferenced": true
+            },
+            "GodotSharp": {
+              "target": "Package",
+              "version": "[4.7.2, )",
+              "autoReferenced": true
+            },
+            "GodotSharpEditor": {
+              "target": "Package",
+              "version": "[4.7.2, )",
+              "autoReferenced": true
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.31, 8.0.31]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[8.0.31, 8.0.31]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/10.0.112/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

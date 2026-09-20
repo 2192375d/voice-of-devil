@@ -4,7 +4,7 @@ using System.Text.Json;
 public sealed record GameCommand(string Name, float YDegrees = 0)
 {
     public bool IsControl => Name is "stop" or "clear_queue";
-    public bool IsAction => Name is "walk_forward" or "rotate" or "grab_item" or "drop_item";
+    public bool IsAction => Name is "walk_forward" or "rotate" or "grab_item" or "drop_item" or "interact";
 }
 
 public sealed record GameCommandResult(object State, bool IsError = false, string PngBase64 = null)
@@ -27,7 +27,7 @@ public static class GameCommands
     {
         command = null;
         error = null;
-        if (name is not ("walk_forward" or "rotate" or "stop" or "grab_item" or "drop_item" or "observe" or "clear_queue"))
+        if (name is not ("walk_forward" or "rotate" or "stop" or "grab_item" or "drop_item" or "interact" or "observe" or "clear_queue"))
         {
             error = "Unknown command.";
             return false;

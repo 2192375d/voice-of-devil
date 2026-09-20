@@ -38,6 +38,7 @@ curl http://127.0.0.1:3000/api/v1/commands \
 | `rotate` | `{"degrees":{"x":0,"y":90,"z":0}}` | Add relative yaw at fixed speed; positive Y turns right. X/Z must be zero; Y must be finite. |
 | `stop` | `{}` or omitted | Cancel all active actions; preserve pending requests and held item. |
 | `grab_item` | `{}` or omitted | Pick the nearest unobstructed item in the forward hemisphere; requires idle movement and empty hands. |
+| `interact` | `{}` or omitted | Toggle the nearest unobstructed door in front within 5 units; requires idle movement. Returns `opening`, `closing`, `busy`, `no_interactable_in_reach`, or `plate_controlled` (door follows its pressure plate automatically). |
 | `drop_item` | `{}` or omitted | Release the held item if space is clear; requires idle movement. |
 | `observe` | `{}` or omitted | Return a 512×512 first-person PNG with matching state. |
 | `clear_queue` | `{}` or omitted | Cancel earlier pending action requests, preserving active actions, observations, and later requests. |
@@ -126,7 +127,7 @@ order relative to each other. New arrivals during dispatch wait for the next tic
 
 **A pending action can start after `stop`.** To discard pending work and stop active
 actions, await `clear_queue`'s response, then call `stop`. Clearing cancels only
-older pending walk/rotate/grab/drop requests; their responses report `cancelled`.
+older pending walk/rotate/grab/drop/interact requests; their responses report `cancelled`.
 
 Undispatched requests expire after 10 seconds and cannot execute afterward.
 Observations also time out after 10 seconds without a usable frame. Body reads

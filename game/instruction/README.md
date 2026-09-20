@@ -18,6 +18,10 @@ Requests return `InstructionRequestResult`. Repeated walking returns
 Zero rotation completes immediately. Stop cancels both actions, clears horizontal
 movement immediately, and leaves gravity running.
 
+Walking and rotation both derive from `InstructionSustained`. Rotation inherits
+through `Instruction<Vector3>` and runs across physics ticks until its requested
+angle is reached or stop cancels it; walking runs until stop.
+
 `ActiveInstructions` exposes status, elapsed time, and typed instruction progress.
 `LastFinishedInstruction` retains the latest completion, including stop.
 The player ticks the manager before applying movement, so callers must not tick
@@ -35,7 +39,7 @@ prints the result to Output; it does not wait for movement to finish.
 
 Both player scenes include `PickupOrigin` and `HoldPoint` markers. Items must use
 the `Pickable` script on a `RigidBody3D` with a collision shape and mesh. Selection
-uses item origins within `PickupReach` (default 2 units) in the forward hemisphere,
+uses item origins within `PickupReach` (default 5 units) in the forward hemisphere,
 ordered by distance and then scene path. A ray from `PickupOrigin` rejects items
 behind other physics bodies; `PickupObstacleMask` controls which layers block it.
 The held item attaches to `HoldPoint` and is exposed by `Player.HeldItem`.
@@ -62,3 +66,55 @@ dotnet run --project tests/Instructions/Instructions.csproj
 If only a newer .NET runtime is installed, prefix that command with
 `DOTNET_ROLL_FORWARD=Major`. These checks use a fake player; collision response,
 gravity, and visual turning still require verification inside Godot.
+
+## Door interaction
+
+Send `{"command":"interact"}` to the game API. `InstructionManager.Interact()`
+runs on the physics tick and requires idle movement. It targets the nearest door
+collider point within `InteractionReach` (5 world units), in the forward
+hemisphere and unobstructed under `InteractionObstacleMask`. Scene path breaks
+equal-distance ties. The player and its held item are excluded from visibility
+checks. No visible candidate returns `no_interactable_in_reach`.
+
+The door scene owns its 90-degree, 0.6-second hinge motion and moving collision.
+`opening` and `closing` mean motion has started; the immediate instruction is
+complete, while the door continues moving. A moving door returns `busy`.
+Stop affects player instructions only. Held items do not prevent interaction.
+Angle, duration, and local hinge position are configurable on the door scene.
+Doors start closed and may push bodies in their path. The development UI’s
+**Interact** button invokes the same instruction on the next physics tick.
+Reach and visibility use the closest point on the rotated, scaled box collider,
+so tall doors remain reachable from ground level.
+
+Run the door physics and live API checks after building the game:
+
+```sh
+VOD_API_BIND=127.0.0.1 VOD_API_PORT=13091 godot-mono --headless --path . --script res://tests/Doors/check.gd --log-file /tmp/door-check.log
+```
+
+### Pressure plate doors
+
+`PressurePlate` is a fixed body with a shallow `Sensor` Area3D above its surface.
+Characters and unheld rigid bodies count as weight; static scenery and held items
+do not. Any remaining weight keeps the plate active.
+
+Enable `PlateControlled` on a door and assign its `ActivationPlate` in the Inspector.
+The second room's `DoorLocked` is wired to its sibling `PressurePlate` this way.
+Explicit node references keep pairs local without global group names. An unassigned
+or removed plate keeps the controlled door closed. Regular doors still toggle manually.
+
+Plate-controlled doors open automatically while weighted and close when cleared,
+reversing smoothly if the weight changes mid-swing. Manual/API interaction returns
+`plate_controlled` and cannot override the plate. Closing doors may push bodies.
+
+Run `res://tests/Doors/check_plate.gd` with Godot headless to check the actual room's
+object, character, multiple weights, pickup/removal, reversal, and missing-plate behavior.
+
+### Small steps
+
+While walking on the floor, the player can automatically step up to `MaxStepHeight`
+(default 0.35 world units). Full-body sweeps check overhead clearance, the forward
+path, and a walkable landing. The capsule-radius probe finds the top of a step;
+normal walking still determines horizontal speed. This lets the character walk
+onto the pressure plate, while taller walls and low ceilings block progress.
+Run `res://tests/Doors/check_steps.gd` for the world plate and obstacle checks.

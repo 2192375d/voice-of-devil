@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "dgSpecHash": "ZwNDY/2bG54=",
+  "success": true,
+  "projectFilePath": "/home/archmiere/Documents/game-dev/voice-of-devil/words-of-devil.csproj",
+  "expectedPackageFiles": [
+    "/home/archmiere/.nuget/packages/godot.sourcegenerators/4.7.2/godot.sourcegenerators.4.7.2.nupkg.sha512",
+    "/home/archmiere/.nuget/packages/godotsharp/4.7.2/godotsharp.4.7.2.nupkg.sha512",
+    "/home/archmiere/.nuget/packages/godotsharpeditor/4.7.2/godotsharpeditor.4.7.2.nupkg.sha512",
+    "/home/archmiere/.nuget/packages/microsoft.netcore.app.ref/8.0.31/microsoft.netcore.app.ref.8.0.31.nupkg.sha512",
+    "/home/archmiere/.nuget/packages/microsoft.aspnetcore.app.ref/8.0.31/microsoft.aspnetcore.app.ref.8.0.31.nupkg.sha512"
+  ],
+  "logs": []
+}

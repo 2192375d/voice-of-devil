@@ -35,17 +35,19 @@ public static class GameState
                 InstructionRotate => "rotate",
                 InstructionGrabItem => "grab_item",
                 InstructionDropItem => "drop_item",
+                InstructionInteract => "interact",
                 InstructionStop => "stop",
                 _ => instruction.GetType().Name
             },
             status = Snake(instruction.Status.ToString()),
-            elapsed_seconds = instruction is SustainedAction action ? (double?)action.ElapsedSeconds : null,
+            elapsed_seconds = instruction is InstructionSustained action ? (double?)action.ElapsedSeconds : null,
             requested_degrees = instruction is InstructionRotate rotation ? (float?)rotation.Arguments.Y : null,
             remaining_degrees = instruction is InstructionRotate turn ? (double?)turn.RemainingDegrees : null,
             result = instruction switch
             {
                 InstructionGrabItem grab => Snake(grab.Result.ToString()),
                 InstructionDropItem drop => Snake(drop.Result.ToString()),
+                InstructionInteract interact => Snake(interact.Result.ToString()),
                 InstructionStop => "stopped",
                 _ => null
             }
