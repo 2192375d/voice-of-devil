@@ -5,17 +5,14 @@ import json
 from contextlib import asynccontextmanager
 
 import httpx
-import httpx2
 import pytest
 from backboard import BackboardClient
 from google import genai
 from google.genai import types
-from mcp import ClientSession, MCPError
-from mcp.client.streamable_http import streamable_http_client
-from mcp.types import REQUEST_TIMEOUT
 
 from mcp_server_jev_client.app import Services, create_app
-from mcp_server_jev_client.providers import GeminiVision, GodotObserver, JevDecider
+from mcp_server_jev_client.game_client import GameClient, GameClientError, GodotObserver
+from mcp_server_jev_client.providers import GeminiVision, JevDecider
 from test_observe import Harness, OBSERVATION, PNG, STATE, answers
 
 
@@ -23,27 +20,16 @@ async def test_real_sdks_serialize_observation_and_decision_without_network():
     calls = []
 
     def godot_handler(request):
-        if request.method != "POST":
-            return httpx2.Response(405)
+        assert request.method == "POST"
         body = json.loads(request.content)
         calls.append(body)
-        if body["method"] == "initialize":
-            result = {"protocolVersion": "2025-11-25", "capabilities": {"tools": {}},
-                      "serverInfo": {"name": "Godot-test", "version": "1"}}
-        elif body["method"] == "notifications/initialized":
-            return httpx2.Response(202)
-        elif body["method"] == "tools/list":
-            result = {"tools": [{"name": "observe", "inputSchema": {"type": "object"}}]}
-        else:
-            assert body["method"] == "tools/call"
-            assert body["params"]["name"] == "observe"
-            assert body["params"]["arguments"] == {}
-            assert request.headers["mcp-protocol-version"] == "2025-11-25"
-            result = {"isError": False, "structuredContent": STATE, "content": [
-                {"type": "text", "text": json.dumps(STATE)},
-                {"type": "image", "mimeType": "image/png", "data": base64.b64encode(PNG).decode()},
-            ]}
-        return httpx2.Response(200, json={"jsonrpc": "2.0", "id": body["id"], "result": result})
+        assert body == {"command": "observe"}
+        return httpx.Response(200, json={
+            "request_id": "live-1",
+            "ok": True,
+            "result": STATE,
+            "image": {"mime_type": "image/png", "data": base64.b64encode(PNG).decode()},
+        })
 
     def gemini_handler(request):
         assert request.url.path.endswith("/models/gemini-3.5-flash:generateContent")
@@ -75,16 +61,22 @@ async def test_real_sdks_serialize_observation_and_decision_without_network():
     backboard = BackboardClient(api_key="test")
     await backboard._client.aclose()
     backboard._client = httpx.AsyncClient(transport=httpx.MockTransport(backboard_handler))
+    transport = GameClient("http://godot/api/v1/commands")
+    await transport._http.aclose()
+    transport._http = httpx.AsyncClient(transport=httpx.MockTransport(godot_handler))
 
     @asynccontextmanager
     async def services():
         async with gemini.aio as google_client, backboard:
-            async with httpx2.AsyncClient(transport=httpx2.MockTransport(godot_handler)) as transport:
-                async with streamable_http_client("http://godot/mcp", http_client=transport) as streams:
-                    async with ClientSession(streams[0], streams[1]) as session:
-                        result = await session.initialize()
-                        assert result.protocol_version == "2025-11-25"
-                        yield Services(GodotObserver(session), GeminiVision(google_client), JevDecider(backboard))
+            try:
+                yield Services(
+                    GodotObserver(transport),
+                    GeminiVision(google_client),
+                    JevDecider(backboard),
+                    transport=None,
+                )
+            finally:
+                await transport.aclose()
 
     app = create_app(services_factory=services)
     try:
@@ -93,9 +85,9 @@ async def test_real_sdks_serialize_observation_and_decision_without_network():
                 response = await client.post("/observe", json={"goal": "Explore"})
                 assert response.status_code == 200, response.text
                 assert response.json()["decision"]["arguments"]["degrees"]["y"] == -90
-        tool_calls = [call for call in calls if call["method"] == "tools/call"]
-        assert len(tool_calls) == 1 and tool_calls[0]["params"]["name"] == "observe"
+        assert calls == [{"command": "observe"}]
         assert backboard._client.is_closed
+        assert transport._http.is_closed
     finally:
         gemini.close()
 
@@ -118,11 +110,17 @@ async def test_backboard_wrapped_network_timeout_is_504():
 
 
 @pytest.mark.parametrize("error", [
-    httpx2.ReadTimeout("timeout"), MCPError(REQUEST_TIMEOUT, "timeout"),
+    GameClientError("timeout", timed_out=True),
+    httpx.ReadTimeout("timeout"),
 ])
-async def test_mcp_timeout_types_are_504(error):
+async def test_game_timeout_types_are_504(error):
     h = Harness()
-    h.session.call_tool.side_effect = error
+    if isinstance(error, GameClientError):
+        h.transport.error = error
+    else:
+        async def boom():
+            raise error
+        h.transport.observe = boom
     async with h.client() as client:
         response = await client.post("/observe", json={"goal": "Explore"})
     assert response.status_code == 504
