@@ -163,7 +163,7 @@ custom_minimum_size = Vector2(140, 44)
 layout_mode = 2
 tooltip_text = "Walk continuously until Stop is pressed."
 focus_mode = 0
-text = "Walk forward"
+text = "Walk 5 m"
 
 [node name="Rotate" type="Button" parent="CanvasLayer/InstructionControls" unique_id=911538893]
 custom_minimum_size = Vector2(108, 44)

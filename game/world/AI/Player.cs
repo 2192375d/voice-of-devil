@@ -21,7 +21,8 @@ public partial class Player : CharacterBody3D, IInstructionTarget
 
 	public InstructionManager Instructions { get; private set; }
 	double IInstructionTarget.RotationSpeedDegrees => RotationSpeed;
-	private bool walkingCommanded;
+	double IInstructionTarget.MovementSpeedMetersPerSecond => Speed;
+	private double commandedWalkingSpeed;
 
 	private Cache cache;
 
@@ -41,7 +42,7 @@ public partial class Player : CharacterBody3D, IInstructionTarget
 		Vector3 velocity = Velocity;
 		Vector3 forward = -GlobalBasis.Z;
 		forward.Y = 0;
-		Vector3 walking = walkingCommanded ? forward.Normalized() * Speed : Vector3.Zero;
+		Vector3 walking = forward.Normalized() * (float)commandedWalkingSpeed;
 		velocity.X = walking.X;
 		velocity.Z = walking.Z;
 		velocity += GetGravity() * (float)delta;
@@ -87,7 +88,8 @@ public partial class Player : CharacterBody3D, IInstructionTarget
 		return true;
 	}
 
-	void IInstructionTarget.CommandWalkForward() => walkingCommanded = true;
+	void IInstructionTarget.CommandWalkForward(double speedMetersPerSecond)
+		=> commandedWalkingSpeed = speedMetersPerSecond;
 
 	void IInstructionTarget.ApplyRightTurnDegrees(double degrees)
 	{
@@ -97,7 +99,7 @@ public partial class Player : CharacterBody3D, IInstructionTarget
 
 	void IInstructionTarget.ClearCommandedMovement()
 	{
-		walkingCommanded = false;
+		commandedWalkingSpeed = 0;
 		Velocity = new Vector3(0, Velocity.Y, 0);
 	}
 

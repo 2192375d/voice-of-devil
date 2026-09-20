@@ -16,7 +16,7 @@ async def agent_send_execute_loop(interface, user_prompt="", world_prompt=""):
             int(res["x_dir"][0]), int(res["y_dir"][0]), int(res["z_dir"][0])
         )
         if res["movement_actions"][1] > 0.5:
-            await mcp_server.walk_forwards()
+            await mcp_server.walk_forwards(5)
 
         if res["observe_action"] > 0.5:
             world_prompt = await mcp_server.observe()

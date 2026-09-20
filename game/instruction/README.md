@@ -3,12 +3,15 @@
 After the player is ready, call its manager on Godot's main thread:
 
 ```csharp
-player.Instructions.WalkForward();
+player.Instructions.WalkForward(5); // meters
 player.Instructions.Rotate(new Vector3(0, 90, 0));
 player.Instructions.Stop();
 ```
 
-Walking continues until stop, including when blocked by collisions. Rotation uses
+Walking requires a positive finite distance in meters (one world unit = one meter).
+Its physics timer lasts `meters / Speed`, capturing speed when requested, and stops
+automatically even if blocked. Collisions can reduce actual distance traveled. The
+final tick is scaled to avoid overshooting. The dev button requests 5 meters. Rotation uses
 relative degrees: positive Y turns right, negative Y turns left. X and Z must be
 zero. Walking follows the current heading during a turn. The exported player
 speeds default to 5 units/second and 90 degrees/second.
@@ -20,7 +23,8 @@ movement immediately, and leaves gravity running.
 
 Walking and rotation both derive from `InstructionSustained`. Rotation inherits
 through `Instruction<Vector3>` and runs across physics ticks until its requested
-angle is reached or stop cancels it; walking runs until stop.
+angle is reached or stop cancels it; walking inherits through `Instruction<double>`
+and runs until its timer expires or stop cancels it.
 
 `ActiveInstructions` exposes status, elapsed time, and typed instruction progress.
 `LastFinishedInstruction` retains the latest completion, including stop.

@@ -2,7 +2,8 @@
 public interface IInstructionTarget
 {
     double RotationSpeedDegrees { get; }
-    void CommandWalkForward();
+    double MovementSpeedMetersPerSecond { get; }
+    void CommandWalkForward(double speedMetersPerSecond);
     void ApplyRightTurnDegrees(double degrees);
     void ClearCommandedMovement();
     InstructionRequestResult TryGrabItem();
