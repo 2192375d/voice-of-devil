@@ -37,7 +37,9 @@ requests are not atomic: if one fails, the other may already be running. Both
 outcomes are reported and neither is automatically retried.
 Walking defaults to 5 meters (about one second at default speed); supported
 distances are ±1, ±2, ±5, and ±10 meters. Turns are relative yaw, positive right
-and negative left, in 2° steps from −180° through 180°. Stop cancels both walking
+and negative left, in 2° steps from −180° through 180°. Jev chooses the magnitude
+from the request and Godot state, without a fixed 90° default; explicit angles take
+priority and are mapped to the nearest supported value. Stop cancels both walking
 and rotation. Collision can prevent travel even when the walk timer completes.
 
 The terminal prints `Jev action:` and `Godot result:`. Request failures and Godot

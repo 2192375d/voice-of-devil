@@ -21,6 +21,11 @@ walk_forward is a timed move, default 5 meters, NOT continuous walking. Negative
 meters move backward. A completed movement timer does not prove actual displacement.
 stop cancels movement and rotation. rotate is relative yaw only: positive turns right,
 negative turns left. No pitch or roll. Never rotate merely because walking was requested.
+Choose the turn magnitude from the operator's request and the available Godot state;
+there is no fixed default angle. Honor an explicitly requested angle using the nearest
+supported value. Otherwise choose an appropriate relative turn toward the requested
+direction or goal. Object hints are approximate, not exact world bearings; do not
+invent precise target geometry. Choose wait if essential information is missing.
 Walking and rotation CAN overlap. For "walk forward while turning right", select
 walk_and_turn with both meters and yaw_degrees. For a turn when already walking,
 select rotate only: this preserves the ongoing walk without restarting it.
@@ -57,7 +62,7 @@ questions = {
     },
     "yaw_degrees": {
         "type": "choice",
-        "instructions": "Relative turn for rotate or walk_and_turn: positive right, negative left, default 90 right or -90 left.",
+        "instructions": "Choose the relative yaw for rotate or walk_and_turn from the request and Godot state. Positive is right, negative is left. Honor explicit angles using the nearest supported value. Otherwise choose the magnitude that fits the requested turn; no fixed default angle.",
         "criteria": {str(a): f"{a} degrees" for a in range(-180, 181, 2)},
     },
 }

@@ -73,6 +73,22 @@ def jev(answer):
     return interface
 
 
+def test_yaw_prompt_has_no_fixed_quarter_turn_default():
+    question = jev_interface.questions["yaw_degrees"]
+    assert "no fixed default angle" in question["instructions"]
+    assert "default 90" not in question["instructions"]
+    assert set(question["criteria"]) == {str(angle) for angle in range(-180, 181, 2)}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("angle", [-136, -24, 16, 62, 118])
+async def test_jev_selected_angle_is_preserved_without_default(angle):
+    interface = jev({"action": {"probabilities": {"rotate": 1.0}},
+                     "yaw_degrees": {"probabilities": {str(angle): 0.8, "90": 0.2}}})
+    result = await interface.send_req("turn toward the target", {"vision": None})
+    assert result["arguments"] == {"degrees": {"x": 0, "y": angle, "z": 0}}
+
+
 @pytest.mark.asyncio
 async def test_jev_combined_movement_includes_both_arguments():
     interface = jev({"action": {"probabilities": {"walk_and_turn": 0.95, "wait": 0.05}},
