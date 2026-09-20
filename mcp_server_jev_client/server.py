@@ -17,7 +17,7 @@ async def agent_send_execute_loop(interface, user_prompt="", world_prompt=""):
             int(res["x_dir"][0]), int(res["y_dir"][0]), int(res["z_dir"][0])
         )
         if res["movement_actions"][1] > 0.5:
-            await mcp_server.walk_forwards(5)
+            await mcp_server.walk_forwards(res["movement_distance"])
 
         if res["observe_action"] > 0.5:
             world_prompt = await mcp_server.observe()
@@ -42,7 +42,9 @@ async def execute_loop(interface):
     last_sent = 0.0
     while True:
         if mcp_server.requests_queue.qsize() != 0:
-            mcp_server.requests_queue.get()()
+            f = mcp_server.requests_queue.get()
+            print("EXECUTING: ", f)
+            f()
         if started and time.monotonic() - last_sent >= 1.0:
             last_sent = time.monotonic()
             # send world state every 1s

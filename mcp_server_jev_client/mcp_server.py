@@ -19,6 +19,7 @@ async def walk_forwards(meters: float) -> None :
 	Move the requested number of meters using the game timer; negative moves backward, zero does nothing.
 	"""
 	requests_queue.put(lambda : requests.post(f'http://{GAME_SERVER}/api/v1/commands', headers={'Content-Type':'application/json'}, json={"command":"walk_forward", "arguments":{"meters":meters}}))
+	#requests.post(f'http://{GAME_SERVER}/api/v1/commands', headers={'Content-Type':'application/json'}, json={"command":"walk_forward", "arguments":{"meters":meters}})
 	#print(r.status_code)
 	# return r.json()["resource"]
 	#return gemini_vision.summarize(r.json()["image"])
@@ -49,7 +50,7 @@ async def observe() -> str :
 	"""
 
 	r = requests.post(f'http://{GAME_SERVER}/api/v1/commands',headers={'Content-Type':'application/json'}, json={"command":"observe"})
-	image_desc = await gemini_vision.summarize(str(r.json()["image"]["data"]))
+	# image_desc = await gemini_vision.summarize(str(r.json()["image"]["data"]))
 	#return r.json()
 	return r.json()["result"]
 	#return f"""

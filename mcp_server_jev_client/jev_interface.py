@@ -84,6 +84,7 @@ class JevInterface(object):
         y_dirs = val['y_dir']['probabilities']
         z_dirs = val['z_dir']['probabilities']
         movement_actions = val['movement_action']['probabilities']
+        movement_distances = val['movement_distance']['probabilities']
 
         tgt_x_dir = max(x_dirs, key=x_dirs.get)
         tgt_x_dir_prob = x_dirs[tgt_x_dir]
@@ -96,6 +97,8 @@ class JevInterface(object):
 
         tgt_movement_actions = max(movement_actions, key=movement_actions.get)
         tgt_movement_actions_prob = movement_actions[tgt_movement_actions]
+        
+        tgt_movement_distance = max(movement_distances, key=movement_distances.get)
 
         tgt_observe_noul = val['observe_action']['noul']
         self.context += f"""
@@ -105,6 +108,7 @@ class JevInterface(object):
         Z_DIR: {tgt_z_dir} ({tgt_z_dir_prob})
         Movement_Actions: {tgt_movement_actions} ({tgt_movement_actions_prob})
         Observe: {tgt_observe_noul}
+        Movement_Distance: {tgt_movement_distance}
         """
         # get the highest actions of each relevant area
         return {
@@ -112,7 +116,8 @@ class JevInterface(object):
             "y_dir": (tgt_y_dir, tgt_y_dir_prob),
             "z_dir": (tgt_z_dir, tgt_z_dir_prob),
             "movement_actions": (tgt_movement_actions, tgt_movement_actions_prob),
-            "observe_action": (tgt_observe_noul)
+            "observe_action": (tgt_observe_noul),
+            "movement_distance": (tgt_movement_distance)
         }
     
     #asyncio.run(main())
