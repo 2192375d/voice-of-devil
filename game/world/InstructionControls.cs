@@ -11,7 +11,7 @@ public partial class InstructionControls : HBoxContainer
     public override void _Ready()
     {
         player = GetNode<Player>("../../Player");
-        GetNode<Button>("WalkForward").Pressed += () => player.Instructions.WalkForward();
+        GetNode<Button>("WalkForward").Pressed += () => player.Instructions.WalkForward(5);
         GetNode<Button>("Rotate").Pressed += () => player.Instructions.Rotate(new Vector3(0, 90, 0));
         GetNode<Button>("Stop").Pressed += () =>
         {

@@ -7,7 +7,7 @@ public static class GameInstructionBridge
     {
         var result = command.Name switch
         {
-            "walk_forward" => manager.WalkForward(),
+            "walk_forward" => manager.WalkForward(command.Meters),
             "rotate" => manager.Rotate(new Vector3(0, command.YDegrees, 0)),
             "stop" => manager.Stop(),
             "grab_item" => manager.GrabItem(),

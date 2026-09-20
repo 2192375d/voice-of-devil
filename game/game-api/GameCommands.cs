@@ -1,7 +1,7 @@
 using System;
 using System.Text.Json;
 
-public sealed record GameCommand(string Name, float YDegrees = 0)
+public sealed record GameCommand(string Name, float YDegrees = 0, double Meters = 0)
 {
     public bool IsControl => Name is "stop" or "clear_queue";
     public bool IsAction => Name is "walk_forward" or "rotate" or "grab_item" or "drop_item" or "interact";
@@ -36,6 +36,19 @@ public static class GameCommands
         {
             error = "arguments must be an object.";
             return false;
+        }
+        if (name == "walk_forward")
+        {
+            if (arguments.ValueKind != JsonValueKind.Object || Count(arguments) != 1
+                || !arguments.TryGetProperty("meters", out var meters)
+                || meters.ValueKind != JsonValueKind.Number || !meters.TryGetDouble(out double distance)
+                || !double.IsFinite(distance) || distance <= 0)
+            {
+                error = "walk_forward requires meters: a positive finite number.";
+                return false;
+            }
+            command = new GameCommand(name, Meters: distance);
+            return true;
         }
         if (name != "rotate")
         {

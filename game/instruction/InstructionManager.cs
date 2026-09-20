@@ -39,12 +39,18 @@ public sealed class InstructionManager
         ActiveInstructions = active.AsReadOnly();
     }
 
-    public InstructionRequestResult WalkForward()
+    public InstructionRequestResult WalkForward(double meters)
     {
+        if (!double.IsFinite(meters) || meters <= 0
+            || !double.IsFinite(target.MovementSpeedMetersPerSecond) || target.MovementSpeedMetersPerSecond <= 0
+            || !double.IsFinite(meters / target.MovementSpeedMetersPerSecond)
+            || meters / target.MovementSpeedMetersPerSecond <= 0)
+            return InstructionRequestResult.InvalidArguments;
+
         if (active.Exists(instruction => instruction is InstructionMoveForward))
             return InstructionRequestResult.AlreadyRunning;
 
-        active.Add(new InstructionMoveForward());
+        active.Add(new InstructionMoveForward(meters, target.MovementSpeedMetersPerSecond));
         return InstructionRequestResult.Started;
     }
 

@@ -157,9 +157,11 @@ is kept open; idle samples are discarded and not stored.
 V1 executes one action per utterance: walk, rotate, stop, grab, drop, or wait.
 Broad goals may produce one next action. Compound instructions such as “turn
 right then pick it up” are reported as needing clarification instead of executing
-only part. `walk forward` is a **bounded 1-second step** followed by `stop`. That
-is not distance control. A process crash can defeat the Python timer; a
-crash-safe walk lease would need a game-side change and is out of v1.
+only part. The game API now requires `walk_forward` arguments such as
+`{"meters":5}`. It stops on a game-side simulation timer (`meters / speed`),
+even if the client disconnects. The agent loop requests 5 meters per forward
+action; collisions can reduce actual travel. Older clients that omit meters
+need updating.
 
 Recommended STT target, unverified on this Mac/game combination: warm p95
 release-to-transcript ≤ 750 ms for 2–10 s utterances with Godot running. Gemini

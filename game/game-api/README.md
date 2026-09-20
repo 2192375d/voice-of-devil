@@ -21,7 +21,7 @@ or client-supplied request ID is required. Bodies are limited to 64 KiB.
 ```sh
 curl http://127.0.0.1:3000/api/v1/commands \
   -H 'Content-Type: application/json' \
-  -d '{"command":"walk_forward"}'
+  -d '{"command":"walk_forward","arguments":{"meters":5}}'
 
 curl http://127.0.0.1:3000/api/v1/commands \
   -H 'Content-Type: application/json' \
@@ -34,7 +34,7 @@ curl http://127.0.0.1:3000/api/v1/commands \
 
 | Command | Arguments | Behavior |
 | --- | --- | --- |
-| `walk_forward` | `{}` or omitted | Walk indefinitely until stopped; repeats return `already_running`. |
+| `walk_forward` | `{"meters":5}` | Positive finite meters; stops after `meters / speed` simulation seconds, even when blocked. Repeats return `already_running` without resetting the timer. |
 | `rotate` | `{"degrees":{"x":0,"y":90,"z":0}}` | Add relative yaw at fixed speed; positive Y turns right. X/Z must be zero; Y must be finite. |
 | `stop` | `{}` or omitted | Cancel all active actions; preserve pending requests and held item. |
 | `grab_item` | `{}` or omitted | Pick the nearest unobstructed item in the forward hemisphere; requires idle movement and empty hands. |
@@ -133,7 +133,7 @@ Undispatched requests expire after 10 seconds and cannot execute afterward.
 Observations also time out after 10 seconds without a usable frame. Body reads
 have a separate 10-second deadline. Shutdown resolves outstanding requests.
 There is no individual request-cancellation endpoint. Disconnecting does not undo
-an accepted action, and losing the Python connection does not stop walking.
+an accepted action, and losing the Python connection does not cancel an accepted walk; its game-side timer still stops it.
 
 The future Python adapter should forward requests concurrently so `observe` cannot
 block `stop`, inspect both HTTP status and `ok`, and package observation image/state

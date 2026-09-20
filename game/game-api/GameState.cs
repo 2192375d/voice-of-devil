@@ -41,6 +41,8 @@ public static class GameState
             },
             status = Snake(instruction.Status.ToString()),
             elapsed_seconds = instruction is InstructionSustained action ? (double?)action.ElapsedSeconds : null,
+            requested_meters = instruction is InstructionMoveForward walk ? (double?)walk.Arguments : null,
+            remaining_seconds = instruction is InstructionMoveForward move ? (double?)move.RemainingSeconds : null,
             requested_degrees = instruction is InstructionRotate rotation ? (float?)rotation.Arguments.Y : null,
             remaining_degrees = instruction is InstructionRotate turn ? (double?)turn.RemainingDegrees : null,
             result = instruction switch
