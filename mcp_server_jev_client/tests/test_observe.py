@@ -8,16 +8,11 @@ from unittest.mock import AsyncMock
 
 import httpx
 import pytest
-from mcp.types import CallToolResult, ImageContent, TextContent
 
 from mcp_server_jev_client.app import Services, create_app
+from mcp_server_jev_client.game_client import GameClientError, GameFrame, GodotObserver
 from mcp_server_jev_client.models import Observation
-from mcp_server_jev_client.providers import (
-    GeminiVision,
-    GodotObserver,
-    JevDecider,
-    normalize_decision,
-)
+from mcp_server_jev_client.providers import GeminiVision, JevDecider, normalize_decision
 
 
 # A 1x1 PNG intentionally proves the service does not enforce 512x512 dimensions.
@@ -55,20 +50,34 @@ def answers(action="rotate", yaw="90"):
     }
 
 
+class FakeGameClient:
+    def __init__(self, frame=None, error=None):
+        self.frame = frame or GameFrame(png=PNG, state=copy.deepcopy(STATE))
+        self.error = error
+        self.commands = []
+        self.closed = False
+
+    async def observe(self):
+        self.commands.append("observe")
+        if self.error is not None:
+            raise self.error
+        return GameFrame(png=self.frame.png, state=copy.deepcopy(self.frame.state))
+
+    async def execute(self, command, arguments=None):
+        self.commands.append(command)
+        raise AssertionError("observe path must not execute gameplay commands")
+
+    async def aclose(self):
+        self.closed = True
+
+
 class Harness:
     def __init__(self, timeout=60):
-        self.result = CallToolResult(
-            structuredContent=copy.deepcopy(STATE),
-            content=[
-                TextContent(type="text", text=json.dumps(STATE)),
-                ImageContent(type="image", mimeType="image/png", data=base64.b64encode(PNG).decode()),
-            ],
-        )
-        self.session = SimpleNamespace(call_tool=AsyncMock(return_value=self.result))
+        self.transport = FakeGameClient()
         self.generate = AsyncMock(return_value=SimpleNamespace(text=json.dumps(OBSERVATION)))
         self.send = AsyncMock(return_value=SimpleNamespace(system_one=SimpleNamespace(answers=answers())))
         self.services = Services(
-            GodotObserver(self.session),
+            GodotObserver(self.transport),
             GeminiVision(SimpleNamespace(models=SimpleNamespace(generate_content=self.generate))),
             JevDecider(SimpleNamespace(send_message=self.send)),
         )
@@ -92,7 +101,7 @@ class Harness:
                 yield client
 
     def assert_observe_only(self):
-        assert all(call.args == ("observe", {}) for call in self.session.call_tool.await_args_list)
+        assert all(command == "observe" for command in self.transport.commands)
 
 
 async def test_full_pipeline_preserves_image_state_and_first_person_context():
@@ -122,7 +131,7 @@ async def test_full_pipeline_preserves_image_state_and_first_person_context():
     assert jev["llm_provider"] == "typesafe" and jev["model_name"] == "jev-latest"
     assert jev["stream"] is False and jev["memory"] == "off"
     assert "thread_id" not in jev and "tools" not in jev
-    h.session.call_tool.assert_awaited_once_with("observe", {})
+    assert h.transport.commands == ["observe"]
     h.assert_observe_only()
     assert h.closed
 
@@ -133,7 +142,7 @@ async def test_invalid_request_does_not_reach_providers(payload):
     async with h.client() as client:
         response = await client.post("/observe", json=payload)
     assert response.status_code == 422
-    h.session.call_tool.assert_not_awaited()
+    assert h.transport.commands == []
     h.generate.assert_not_awaited()
     h.send.assert_not_awaited()
 
@@ -146,7 +155,7 @@ async def test_simple_decisions_are_returned_not_executed(action):
         response = await client.post("/observe", json={"goal": "Explore"})
     assert response.status_code == 200
     assert response.json()["decision"] == {"action": action, "arguments": {}}
-    h.session.call_tool.assert_awaited_once_with("observe", {})
+    assert h.transport.commands == ["observe"]
 
 
 @pytest.mark.parametrize("yaw", ["-180", "-90", "0", "90", "180"])
@@ -183,24 +192,17 @@ async def test_missing_system_one_is_not_parsed_from_content():
     h.assert_observe_only()
 
 
-@pytest.mark.parametrize("failure", ["tool_error", "missing_state", "missing_position", "missing_image", "empty_image", "invalid_base64"])
-async def test_bad_mcp_result_stops_before_model_calls(failure):
+@pytest.mark.parametrize("error,timeout", [
+    (GameClientError("tool_error"), False),
+    (GameClientError("missing_state"), False),
+    (GameClientError("expired", timed_out=True, status="expired"), True),
+])
+async def test_bad_game_result_stops_before_model_calls(error, timeout):
     h = Harness()
-    if failure == "tool_error":
-        h.result.is_error = True
-    elif failure == "missing_state":
-        h.result.structured_content = None
-    elif failure == "missing_position":
-        del h.result.structured_content["position"]
-    elif failure == "missing_image":
-        h.result.content = h.result.content[:1]
-    elif failure == "empty_image":
-        h.result.content[1].data = ""
-    else:
-        h.result.content[1].data = "not base64!"
+    h.transport.error = error
     async with h.client() as client:
         response = await client.post("/observe", json={"goal": "Explore"})
-    assert response.status_code == 502
+    assert response.status_code == 504 if timeout else 502
     assert response.json()["detail"]["stage"] == "mcp"
     h.generate.assert_not_awaited()
     h.send.assert_not_awaited()
@@ -222,14 +224,19 @@ async def test_invalid_gemini_output_never_reaches_jev(text):
 @pytest.mark.parametrize("stage", ["mcp", "gemini", "jev"])
 async def test_upstream_errors_are_sanitized_and_release_pipeline(stage, caplog):
     h = Harness()
-    mock = {"mcp": h.session.call_tool, "gemini": h.generate, "jev": h.send}[stage]
-    mock.side_effect = RuntimeError("sensitive-api-key-and-image-payload")
+    mock = {"mcp": None, "gemini": h.generate, "jev": h.send}[stage]
+    if stage == "mcp":
+        h.transport.error = RuntimeError("sensitive-api-key-and-image-payload")
+    else:
+        mock.side_effect = RuntimeError("sensitive-api-key-and-image-payload")
     async with h.client() as client:
         response = await client.post("/observe", json={"goal": "Explore"})
         assert response.status_code == 502
         assert response.json()["detail"]["stage"] == stage
         assert "sensitive-api-key" not in response.text + caplog.text
-        mock.side_effect = None
+        h.transport.error = None
+        if mock is not None:
+            mock.side_effect = None
         assert (await client.post("/observe", json={"goal": "Retry"})).status_code == 200
     h.assert_observe_only()
 
@@ -237,7 +244,6 @@ async def test_upstream_errors_are_sanitized_and_release_pipeline(stage, caplog)
 @pytest.mark.parametrize("stage", ["mcp", "gemini", "jev"])
 async def test_deadline_cancels_current_stage_and_releases_pipeline(stage):
     h = Harness(timeout=0.05)
-    mock = {"mcp": h.session.call_tool, "gemini": h.generate, "jev": h.send}[stage]
     cancelled = asyncio.Event()
 
     async def hang(*args, **kwargs):
@@ -246,13 +252,32 @@ async def test_deadline_cancels_current_stage_and_releases_pipeline(stage):
         finally:
             cancelled.set()
 
-    mock.side_effect = hang
+    if stage == "mcp":
+        async def hang(*args, **kwargs):
+            h.transport.commands.append("observe")
+            try:
+                await asyncio.Event().wait()
+            finally:
+                cancelled.set()
+
+        h.transport.observe = hang
+    else:
+        {"gemini": h.generate, "jev": h.send}[stage].side_effect = hang
     async with h.client() as client:
         response = await client.post("/observe", json={"goal": "Explore"})
         assert response.status_code == 504
         assert response.json()["detail"] == {"stage": stage, "error": "upstream_timeout"}
         assert cancelled.is_set()
-        mock.side_effect = None
+        if stage == "mcp":
+            async def observe(self=h.transport):
+                self.commands.append("observe")
+                if self.error is not None:
+                    raise self.error
+                return GameFrame(png=self.frame.png, state=copy.deepcopy(self.frame.state))
+
+            h.transport.observe = observe
+        else:
+            {"gemini": h.generate, "jev": h.send}[stage].side_effect = None
         assert (await client.post("/observe", json={"goal": "Retry"})).status_code == 200
     h.assert_observe_only()
 
@@ -273,7 +298,7 @@ async def test_overlapping_request_is_rejected_without_queuing():
             await asyncio.wait_for(entered.wait(), 1)
             second = await client.post("/observe", json={"goal": "Explore"})
             assert second.status_code == 409
-            h.session.call_tool.assert_awaited_once_with("observe", {})
+            assert h.transport.commands == ["observe"]
         finally:
             release.set()
             assert (await first).status_code == 200

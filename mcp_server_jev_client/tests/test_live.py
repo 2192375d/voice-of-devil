@@ -14,16 +14,15 @@ from mcp_server_jev_client.models import ObserveResponse
 async def test_rendered_game_and_live_providers():
     app = create_app()
     async with app.router.lifespan_context(app):
-        # Record the real client calls to ensure this check only observes.
-        session = app.state.services.game.session
-        original_call = session.call_tool
+        transport = app.state.services.transport
+        original = transport._post
         names = []
 
-        async def record(name, arguments=None, **kwargs):
-            names.append(name)
-            return await original_call(name, arguments, **kwargs)
+        async def record(command, arguments=None):
+            names.append(command)
+            return await original(command, arguments)
 
-        session.call_tool = record
+        transport._post = record
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post("/observe", json={"goal": "Explore the visible surroundings"})
         assert names == ["observe"]
