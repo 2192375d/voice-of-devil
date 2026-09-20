@@ -15,14 +15,12 @@ WALK_INTERPRETATION = (
     "this is not distance control and does not honor spoken durations."
 )
 
-
 @dataclass
 class StopOutcome:
     game_cleared: bool = False
     game_stopped: bool = False
     execution_paused: bool = False
     error: str | None = None
-
 
 @dataclass
 class ExecutionPolicy:

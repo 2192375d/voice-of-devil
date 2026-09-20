@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from time import perf_counter
 from typing import Any
 from uuid import UUID, uuid4
+from voice_stt import SpeechRecognizer
 
 READY = "READY"
 RECORDING = "RECORDING"
@@ -28,22 +29,16 @@ def build_parser() -> argparse.ArgumentParser:
             "is queued for Jev scoring and bounded Godot execution."
         ),
     )
-    parser.add_argument("--mcp-url", default="http://127.0.0.1:8000/mcp")
-    parser.add_argument("--hotkey", default="f8", help="Hold-to-talk key (default f8)")
     parser.add_argument("--stop-key", default="f9", help="Immediate priority stop (default f9)")
     parser.add_argument("--device", default=None, help="Input device index or name")
     parser.add_argument("--list-devices", action="store_true", help="List input devices and exit")
     parser.add_argument(
         "--transcribe-only",
         action="store_true",
-        help="Print transcripts without MCP, game, or provider calls",
+        help="Print transcripts without game, or provider calls",
     )
     return parser
 
-
-def require_macos_arm64() -> None:
-    if sys.platform != "darwin" or platform.machine() != "arm64":
-        raise SystemExit("vod-voice requires macOS on Apple Silicon (arm64).")
 
 
 def emit(message: str) -> None:
@@ -54,9 +49,7 @@ def emit(message: str) -> None:
 class VoiceController:
     capture: Any
     recognizer: Any
-    client: Any = None
     transcribe_only: bool = False
-    hotkey: str = "f8"
     poll_interval: float = 0.5
     max_utterance_seconds: float = 30.0
     loop: asyncio.AbstractEventLoop | None = None
@@ -131,7 +124,7 @@ class VoiceController:
             return
         self.capture.seal_utterance()
         self._cancel.set()
-        emit(f"Recording hit {self.max_utterance_seconds:g}s; discarded. Press {self.hotkey.upper()} again.")
+        emit(f"Recording hit {self.max_utterance_seconds:g}s; discarded. Again.")
         self.state = READY
 
     def _clear_limit(self) -> None:
@@ -159,6 +152,7 @@ class VoiceController:
         started = perf_counter()
         try:
             text = await asyncio.to_thread(self.recognizer.transcribe, utterance.samples, cancelled=self._cancel)
+            print("TEXT IS: ", text)
         except Exception as error:
             emit(f"Transcription failed: {error}")
             self.state = READY
@@ -181,48 +175,15 @@ class VoiceController:
         emit(f"STT: {stt_ms:.0f} ms")
         if released_at is not None:
             emit(f"Release-to-transcript: {(perf_counter() - released_at) * 1000:.0f} ms")
-        if self.transcribe_only or self.client is None:
+        if self.transcribe_only:
             self.state = READY
             return
         self.state = SUBMITTING
         command_id = uuid4()
-        try:
-            receipt = await self.client.submit(command_id, text)
-        except Exception as error:
-            emit(f"Submission failed for {command_id}: {error}")
-            self.state = READY
-            return
-        if not receipt.accepted:
-            emit(f"Not admitted ({receipt.error}) command_id={command_id}")
-            self.state = READY
-            return
-        emit(f"Admitted {command_id} status={receipt.status}")
         task = asyncio.create_task(self._poll(command_id), name=f"poll-{command_id}")
         self._poll_tasks.add(task)
         task.add_done_callback(self._poll_tasks.discard)
         self.state = READY
-
-    async def _poll(self, command_id: UUID) -> None:
-        last = None
-        while True:
-            try:
-                status = await self.client.get(command_id)
-            except Exception as error:
-                emit(f"Status poll failed for {command_id}: {error}")
-                return
-            if not status.found:
-                emit(f"Lost job history for {command_id} (service_instance_id={status.service_instance_id})")
-                return
-            snapshot = (status.status, status.error)
-            if snapshot != last:
-                self._print_status(status)
-                last = snapshot
-            if status.status in {
-                "completed", "needs_clarification", "blocked", "expired",
-                "cancelled", "failed", "execution_unknown",
-            }:
-                return
-            await asyncio.sleep(self.poll_interval)
 
     def _print_status(self, status) -> None:
         parts = [f"Job {status.command_id} {status.status}"]
@@ -256,19 +217,6 @@ class VoiceController:
             self.state = READY
         if self.state in BUSY_STATES:
             self._cancel.set()
-        if self.client is None:
-            emit("Stop requested (transcribe-only; no game client).")
-            return
-        try:
-            result = await self.client.stop_game()
-        except Exception as error:
-            emit(f"Priority stop failed: {error}")
-            return
-        emit(
-            f"Priority stop cancelled_jobs={result.cancelled_jobs} "
-            f"cleared={result.game_cleared} stopped={result.game_stopped} "
-            f"paused={result.execution_paused}"
-        )
 
     async def _shutdown(self) -> None:
         self._cancel.set()
@@ -281,92 +229,17 @@ class VoiceController:
             self._work = None
         for task in list(self._poll_tasks):
             task.cancel()
-        if self.client is not None:
-            await self.client.close()
-
-
-class McpCommandClient:
-    def __init__(self, url: str):
-        self.url = url
-        self._stack = None
-        self._session = None
-        self._stop_sequence = 0
-
-    @staticmethod
-    def _parse_result(result, model):
-        if result.is_error or result.structured_content is None:
-            raise RuntimeError("MCP tool did not return a successful structured response")
-        # Validate as JSON: UUIDs are strings on the wire. Keep strict validation
-        # for booleans/numbers rather than disabling strict mode for every field.
-        return model.model_validate_json(json.dumps(result.structured_content, allow_nan=False))
-
-    async def connect(self) -> None:
-        from contextlib import AsyncExitStack
-
-        from mcp import ClientSession
-        from mcp.client.streamable_http import streamable_http_client
-
-        self._stack = AsyncExitStack()
-        streams = await self._stack.enter_async_context(streamable_http_client(self.url))
-        self._session = await self._stack.enter_async_context(ClientSession(streams[0], streams[1]))
-        await self._session.initialize()
-
-    async def submit(self, command_id: UUID, transcript: str):
-        from .models import CommandContext, VoiceCommandReceipt
-
-        stop_sequence = self._stop_sequence
-        context = self._parse_result(
-            await self._session.call_tool("get_command_context", {}), CommandContext,
-        )
-        if stop_sequence != self._stop_sequence:
-            raise RuntimeError("Submission cancelled by priority stop")
-        result = await self._session.call_tool(
-            "submit_voice_command",
-            {"command_id": str(command_id), "transcript": transcript,
-             **context.model_dump(mode="json")},
-        )
-        return self._parse_result(result, VoiceCommandReceipt)
-
-    async def get(self, command_id: UUID):
-        from .models import VoiceCommandStatus
-
-        result = await self._session.call_tool(
-            "get_voice_command",
-            {"command_id": str(command_id)},
-        )
-        return self._parse_result(result, VoiceCommandStatus)
-
-    async def stop_game(self):
-        from .models import StopGameResult
-
-        # Invalidate submissions still reading their context. Already-sent
-        # submissions are fenced by the server's generation check.
-        self._stop_sequence += 1
-        result = await self._session.call_tool("stop_game", {})
-        return self._parse_result(result, StopGameResult)
-
-    async def close(self) -> None:
-        if self._stack is not None:
-            await self._stack.aclose()
-            self._stack = None
-            self._session = None
 
 
 async def _async_main(args: argparse.Namespace) -> None:
-    from .voice_audio import MicrophoneCapture
-    from .voice_hotkey import HotkeyListener
-    from .voice_stt import SpeechRecognizer
+    from voice_audio import MicrophoneCapture
 
-    require_macos_arm64()
     capture = MicrophoneCapture(args.device)
     recognizer = SpeechRecognizer()
-    client = None if args.transcribe_only else McpCommandClient(args.mcp_url)
     controller = VoiceController(
         capture=capture,
         recognizer=recognizer,
-        client=client,
         transcribe_only=args.transcribe_only,
-        hotkey=args.hotkey,
     )
     loop = asyncio.get_running_loop()
     controller.bind_loop(loop)
@@ -383,27 +256,14 @@ async def _async_main(args: argparse.Namespace) -> None:
     def escape() -> None:
         controller.post("escape")
 
-    listener = HotkeyListener(
-        args.hotkey,
-        args.stop_key,
-        on_talk_press=talk_press,
-        on_talk_release=talk_release,
-        on_stop=stop,
-        on_escape=escape,
-    )
     emit("Opening microphone (the macOS indicator stays on while this CLI runs)...")
     capture.start_stream()
     emit("Loading...")
     try:
         await asyncio.to_thread(recognizer.ensure_ready, on_status=emit)
-        if client is not None:
-            emit(f"Connecting to {args.mcp_url} ...")
-            await client.connect()
-        listener.start()
-        emit(f"Ready — hold {args.hotkey.upper()} to talk")
+        emit(f"Ready — talk")
         await controller.run()
     finally:
-        listener.stop()
         capture.close()
         await controller._shutdown()
 
@@ -412,7 +272,7 @@ def main(argv: list[str] | None = None) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.list_devices:
-        from .voice_audio import list_input_devices
+        from voice_audio import list_input_devices
 
         for line in list_input_devices():
             emit(line)
@@ -421,3 +281,6 @@ def main(argv: list[str] | None = None) -> None:
         asyncio.run(_async_main(args))
     except KeyboardInterrupt:
         emit("Shutting down")
+
+if __name__ == "__main__":
+    main()
