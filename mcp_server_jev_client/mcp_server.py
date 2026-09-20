@@ -1,4 +1,5 @@
 import httpx
+from queue import Queue
 import gemini_input
 from gemini_input import Observation
 import requests
@@ -9,6 +10,8 @@ import asyncio
 mcp = MCPServer("myserver")
 gemini_vision = gemini_input.GeminiVision()
 GAME_SERVER="127.0.0.1:3000"
+
+requests_queue = Queue(maxsize=15)
 
 @mcp.tool()
 async def hello(myinput : str) -> str :
@@ -58,13 +61,13 @@ async def observe() -> dict :
 	r = requests.post(f'http://{GAME_SERVER}/api/v1/commands',headers={'Content-Type':'application/json'}, json={"command":"observe"})
 	image_desc = await gemini_vision.summarize(str(r.json()["image"]["data"]))
 	#return r.json()
-	#return r.json()["image"]
-	return f"""
-	## World Metrics
-	{r.json()['result']}
-	## World Description
-	{image_desc}
-	"""
+	return r.json()["result"]
+	#return f"""
+	### World Metrics
+	#{r.json()['result']}
+	### World Description
+	#{image_desc}
+	#"""
 
 @mcp.tool()
 async def grab_item() -> dict :
