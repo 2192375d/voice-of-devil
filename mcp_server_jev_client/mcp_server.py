@@ -55,7 +55,7 @@ async def observe() -> dict :
 
 	r = requests.post(f'http://{GAME_SERVER}/api/v1/commands',headers={'Content-Type':'application/json'}, json={"command":"observe"})
 	print(r.status_code)
-	return r.json()
+	return r.json()['result']
 
 @mcp.tool()
 async def grab_item() -> dict :

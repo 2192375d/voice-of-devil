@@ -5,7 +5,4 @@
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <RootNamespace>wordsofdevil</RootNamespace>
   </PropertyGroup>
-  <ItemGroup>
-    <Compile Remove="tests/**/*.cs" />
-  </ItemGroup>
 </Project>

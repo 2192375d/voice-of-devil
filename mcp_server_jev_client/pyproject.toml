@@ -14,8 +14,16 @@ dependencies = [
     "httpx>=0.28.1",
     "httpx2>=2.13,<3",
     "mcp[cli]>=2.2.0,<3",
+    "mlx[cpu]>=0.32.2",
+    "numpy>=2.5.3",
+    "onnx-asr[gpu,hub]>=0.12.0",
+    "onnxruntime-gpu<1.24",
+    "parakeet-mlx>=0.5.2",
     "pydantic>=2.13.5,<3",
+    "pynput>=1.8.2",
     "python-dotenv>=1.2.3",
+    "scipy>=1.18.1",
+    "sounddevice>=0.5.6",
     "uvicorn>=0.30,<1",
 ]
 

@@ -1,13 +1,3 @@
-# Godot game HTTP API
-
-The `GameApiServer` autoload starts with the game. A future Python MCP adapter can
-call this API; Godot itself no longer implements MCP. The existing Python scaffold
-is separate and unchanged.
-
-## Start and configure
-
-Start the project in Godot, or from a terminal:
-
 ```sh
 VOD_API_BIND=127.0.0.1 VOD_API_PORT=3000 godot-mono --path .
 ```
@@ -24,7 +14,6 @@ invalid configuration or a busy port logs an error without stopping the game.
 Old `VOD_MCP_*` settings and `/mcp` are no longer supported.
 
 ## Call commands
-
 Send `POST http://<game-host>:3000/api/v1/commands` with
 `Content-Type: application/json`. No initialization, MCP headers, Accept header,
 or client-supplied request ID is required. Bodies are limited to 64 KiB.
