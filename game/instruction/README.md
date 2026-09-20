@@ -8,8 +8,10 @@ player.Instructions.Rotate(new Vector3(0, 90, 0));
 player.Instructions.Stop();
 ```
 
-Walking requires a positive finite distance in meters (one world unit = one meter).
-Its physics timer lasts `meters / Speed`, capturing speed when requested, and stops
+Walking requires a finite distance in meters (one world unit = one meter).
+Negative distances move backward without changing the heading. Zero completes
+immediately without changing any active movement, even if the configured speed is invalid.
+Its physics timer lasts `abs(meters) / Speed`, capturing speed when requested, and stops
 automatically even if blocked. Collisions can reduce actual distance traveled. The
 final tick is scaled to avoid overshooting. The dev button requests 5 meters. Rotation uses
 relative degrees: positive Y turns right, negative Y turns left. X and Z must be

@@ -16,7 +16,7 @@ requests_queue = Queue(maxsize=15)
 @mcp.tool()
 async def walk_forwards(meters: float) -> None :
 	"""
-	Walk forward the requested positive number of meters using the game timer.
+	Move the requested number of meters using the game timer; negative moves backward, zero does nothing.
 	"""
 	requests_queue.put(lambda : requests.post(f'http://{GAME_SERVER}/api/v1/commands', headers={'Content-Type':'application/json'}, json={"command":"walk_forward", "arguments":{"meters":meters}}))
 	#print(r.status_code)

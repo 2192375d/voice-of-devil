@@ -158,7 +158,7 @@ V1 executes one action per utterance: walk, rotate, stop, grab, drop, or wait.
 Broad goals may produce one next action. Compound instructions such as “turn
 right then pick it up” are reported as needing clarification instead of executing
 only part. The game API now requires `walk_forward` arguments such as
-`{"meters":5}`. It stops on a game-side simulation timer (`meters / speed`),
+`{"meters":5}`. It stops on a game-side simulation timer (`abs(meters) / speed`),
 even if the client disconnects. The agent loop requests 5 meters per forward
 action; collisions can reduce actual travel. Older clients that omit meters
 need updating.

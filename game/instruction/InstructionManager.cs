@@ -41,10 +41,19 @@ public sealed class InstructionManager
 
     public InstructionRequestResult WalkForward(double meters)
     {
-        if (!double.IsFinite(meters) || meters <= 0
-            || !double.IsFinite(target.MovementSpeedMetersPerSecond) || target.MovementSpeedMetersPerSecond <= 0
-            || !double.IsFinite(meters / target.MovementSpeedMetersPerSecond)
-            || meters / target.MovementSpeedMetersPerSecond <= 0)
+        if (!double.IsFinite(meters))
+            return InstructionRequestResult.InvalidArguments;
+
+        // Like zero-angle rotation, zero distance completes without disturbing active actions.
+        if (meters == 0)
+        {
+            LastFinishedInstruction = new InstructionMoveForward(0, target.MovementSpeedMetersPerSecond);
+            return InstructionRequestResult.Started;
+        }
+
+        if (!double.IsFinite(target.MovementSpeedMetersPerSecond) || target.MovementSpeedMetersPerSecond <= 0
+            || !double.IsFinite(Math.Abs(meters) / target.MovementSpeedMetersPerSecond)
+            || Math.Abs(meters) / target.MovementSpeedMetersPerSecond <= 0)
             return InstructionRequestResult.InvalidArguments;
 
         if (active.Exists(instruction => instruction is InstructionMoveForward))

@@ -1,6 +1,6 @@
 using System;
 
-/// <summary>Timed forward movement; collisions do not extend its duration.</summary>
+/// <summary>Timed forward/backward movement; collisions do not extend its duration.</summary>
 public sealed class InstructionMoveForward : Instruction<double>
 {
     public double DurationSeconds { get; }
@@ -9,8 +9,14 @@ public sealed class InstructionMoveForward : Instruction<double>
 
     internal InstructionMoveForward(double meters, double speedMetersPerSecond) : base(meters)
     {
-        speed = speedMetersPerSecond;
-        DurationSeconds = meters / speed;
+        if (meters == 0)
+        {
+            Complete();
+            return;
+        }
+
+        speed = Math.CopySign(speedMetersPerSecond, meters);
+        DurationSeconds = Math.Abs(meters) / speedMetersPerSecond;
         RemainingSeconds = DurationSeconds;
     }
 
