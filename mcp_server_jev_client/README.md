@@ -18,7 +18,7 @@ Keep your existing `.env`; no credential changes are required. The old
 Gemini quota protection is enabled by default; background prewarming is opt-in.
 See [quota safeguards](OBSERVATIONS.md#quota-safeguards) for budgets and cooldowns.
 
-### Voice commands: Godot state → Jev → one action
+### Voice commands: Godot state → Jev goal loop
 
 The voice loop uses `get_game_state()` to send Godot's current position, rotation,
 held item, active instructions, and object hints directly to Jev. **No Gemini call
@@ -26,10 +26,19 @@ or Gemini key is needed for voice commands.** `BACKBOARD_APIKEY` is still requir
 The existing Godot observation endpoint also captures a PNG, but Python discards
 it for this path; no image is sent to Jev. `vision` is explicitly `null`.
 
-Jev selects one of `walk_forward`, `walk_and_turn`, `stop`, `rotate`, `grab_item`, `drop_item`,
-`interact`, or `wait`. The selected action must have confidence above 0.5; a wait
-or low-confidence result sends nothing and prints why. Each submission executes
-one decision, without unrelated rotation or automatic repeat walks.
+Jev selects one of `walk_forward`, `walk_and_turn`, `stop`, `rotate`, `grab_item`,
+`drop_item`, `interact`, `done`, or `wait`. Actions with confidence at least 0.2
+are accepted by default. A lower-confidence result or `wait` stops the loop and
+prints why; `done` reports success without sending a game command.
+
+The original transcript remains the goal across decisions. After an action finishes,
+the loop fetches fresh Godot state and object hints, includes a compact history of
+completed actions, and asks Jev for the next step. This supports requests such as
+"find the door": Jev can rotate, inspect updated hints, continue searching, and
+finish once a door is visible. It does not use Gemini or send screenshots to Jev.
+The loop defaults to at most 10 actions or 60 seconds and never retries a failed
+command. Configure `JEV_MAX_GOAL_STEPS`, `JEV_MAX_GOAL_SECONDS`, and
+`JEV_MIN_ACTION_CONFIDENCE` if needed.
 `walk_and_turn` submits walking and turning concurrently, for example "walk forward
 while turning right 90 degrees." A turn-only request can also overlap an existing
 walk without stopping or restarting it. Stop remains exclusive. The two combined
@@ -42,7 +51,7 @@ from the request and Godot state, without a fixed 90° default; explicit angles 
 priority and are mapped to the nearest supported value. Stop cancels both walking
 and rotation. Collision can prevent travel even when the walk timer completes.
 
-The terminal prints `Jev action:` and `Godot result:`. Request failures and Godot
+The terminal prints each `Jev step`, its arguments, and `Godot result`. Request failures and Godot
 rejections are surfaced without automatic retry. If state/hints cannot answer a
 scene-dependent request, Jev is instructed to wait rather than invent details.
 The separate MCP `observe` tool still provides Gemini image summaries; its quota

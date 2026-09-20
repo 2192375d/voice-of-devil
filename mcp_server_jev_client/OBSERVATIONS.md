@@ -1,10 +1,13 @@
 # Low-latency hinted observations
 
-The voice loop now uses **Godot-only** `get_game_state()` observations: fresh
+The voice goal loop uses **Godot-only** `get_game_state()` observations: fresh
 structured state and object hints go directly to Jev with `vision: null`. It does
 not initialize or call Gemini, even when background vision is configured. Godot
 still captures a PNG for its existing observe endpoint; the voice path discards
-that image. See [voice commands](README.md#voice-commands-godot-state--jev--one-action)
+that image. It replans after each completed action until Jev chooses `done` or
+`wait`, or until its step/time safety limit is reached. The original goal and a
+compact action history accompany each fresh state. See
+[voice commands](README.md#voice-commands-godot-state--jev-goal-loop)
 for action dispatch. The Gemini pipeline below remains available to explicit MCP
 `observe` callers and benchmarks.
 
@@ -140,8 +143,8 @@ vision timings, not Jev decision or action-acknowledgment latency.
 The voice loop separately logs `transcript_to_action_loop_ms` (Godot state fetch
 through Jev and action acknowledgment) and `decision_action_ms`. These exclude
 recording and speech transcription and do not establish that movement physically
-completed. The loop executes one decision per submission, allowing walking and
-turning together through the explicit `walk_and_turn` choice. There
+completed. Each loop step executes one decision, allowing walking and turning
+together through the explicit `walk_and_turn` choice. There
 are no Gemini timings or Gemini quota gates in this path.
 
 ## Quota safeguards

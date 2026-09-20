@@ -42,8 +42,14 @@ async def test_only_selected_action_is_executed(voice_server, monkeypatch, actio
     interface = SimpleNamespace(send_req=AsyncMock(return_value={
         "action": action, "confidence": 0.9, "arguments": arguments}))
     state = {"game_state": {"held_item": None}, "vision": None}
-    await voice_server.agent_send_execute_loop(interface, "operator command", state)
-    interface.send_req.assert_awaited_once_with("operator command", state)
+    result = await voice_server.agent_send_execute_loop(
+        interface, "operator command", state, max_steps=1
+    )
+    submitted = interface.send_req.await_args.args[1]
+    assert submitted["game_state"] == state["game_state"]
+    assert submitted["agent_progress"] == {
+        "step": 1, "max_steps": 1, "completed_actions": []}
+    assert result["status"] == "step_limit"
     for name, call in tools.items():
         if name == tool:
             if name == "rotate":
@@ -55,15 +61,28 @@ async def test_only_selected_action_is_executed(voice_server, monkeypatch, actio
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("action,confidence", [("walk_forward", 0.5), ("walk_forward", 0.4), ("walk_and_turn", 0.5), ("wait", 1.0)])
+@pytest.mark.parametrize("action,confidence", [
+    ("walk_forward", 0.19), ("walk_and_turn", 0.0), ("wait", 1.0)])
 async def test_wait_or_low_confidence_never_moves(voice_server, monkeypatch, capsys, action, confidence):
     send = AsyncMock()
     monkeypatch.setattr(mcp_server, "send_game_command", send)
     interface = SimpleNamespace(send_req=AsyncMock(return_value={
         "action": action, "confidence": confidence, "arguments": {"meters": 5}}))
-    await voice_server.agent_send_execute_loop(interface, "walk forward", {})
+    await voice_server.agent_send_execute_loop(interface, "walk forward", {}, max_steps=1)
     send.assert_not_awaited()
-    assert "No action sent" in capsys.readouterr().out
+    assert "Goal stopped" in capsys.readouterr().out
+
+
+@pytest.mark.asyncio
+async def test_action_at_confidence_threshold_is_accepted(voice_server, monkeypatch):
+    walk = AsyncMock(return_value={"ok": True, "result": {"status": "started"}})
+    monkeypatch.setattr(mcp_server, "walk_forwards", walk)
+    interface = SimpleNamespace(send_req=AsyncMock(return_value={
+        "action": "walk_forward", "confidence": 0.2, "arguments": {"meters": 5}}))
+    result = await voice_server.agent_send_execute_loop(
+        interface, "walk forward", {}, max_steps=1)
+    walk.assert_awaited_once_with(5)
+    assert result["status"] == "step_limit"
 
 
 def jev(answer):
@@ -125,7 +144,8 @@ async def test_combined_movement_overlaps_and_reports_partial_failure(voice_serv
     interface = SimpleNamespace(send_req=AsyncMock(return_value={
         "action": "walk_and_turn", "confidence": 0.9,
         "arguments": {"meters": 5, "degrees": {"x": 0, "y": 90, "z": 0}}}))
-    operation = voice_server.agent_send_execute_loop(interface, "walk and turn right", {})
+    operation = voice_server.agent_send_execute_loop(
+        interface, "walk and turn right", {}, max_steps=1)
     if failed:
         with pytest.raises(RuntimeError, match="other action may already be running"):
             await asyncio.wait_for(operation, timeout=1)
@@ -134,7 +154,8 @@ async def test_combined_movement_overlaps_and_reports_partial_failure(voice_serv
         assert "result: {'status': 'started'}" in output
     else:
         result = await asyncio.wait_for(operation, timeout=1)
-        assert set(result["result"]) == {"walk_forward", "rotate"}
+        assert result["status"] == "step_limit"
+        assert result["history"][0]["action"] == "walk_and_turn"
     assert calls == [("walk_forward", 5), ("rotate", {"x": 0, "y": 90, "z": 0})]
     stop.assert_not_awaited()
 
@@ -150,8 +171,9 @@ async def test_turn_preserves_existing_walk(voice_server, monkeypatch):
         "action": "rotate", "confidence": 0.9,
         "arguments": {"degrees": {"x": 0, "y": -90, "z": 0}}}))
     state = {"game_state": {"active_instructions": [{"type": "walk_forward", "status": "running"}]}}
-    await voice_server.agent_send_execute_loop(interface, "turn left", state)
-    interface.send_req.assert_awaited_once_with("turn left", state)
+    await voice_server.agent_send_execute_loop(interface, "turn left", state, max_steps=1)
+    submitted = interface.send_req.await_args.args[1]
+    assert submitted["game_state"] == state["game_state"]
     turn.assert_awaited_once_with(x=0, y=-90, z=0)
     walk.assert_not_awaited()
     stop.assert_not_awaited()
@@ -171,6 +193,93 @@ async def test_jev_decision_has_one_action_and_valid_arguments(action, parameter
     assert result == {"action": action, "confidence": 0.95, "arguments": expected}
     await interface.send_req("next command", {"vision": None})
     assert interface.context.count("USER REQUEST:") == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("action", ["done", "wait"])
+async def test_jev_terminal_choices_have_no_arguments(action):
+    interface = jev({"action": {"probabilities": {action: 1.0}}})
+    assert await interface.send_req("find the door", {"vision": None}) == {
+        "action": action, "confidence": 1.0, "arguments": {}}
+
+
+@pytest.mark.asyncio
+async def test_goal_loop_reobserves_and_finishes_when_door_is_found(voice_server, monkeypatch):
+    initial = {"observation_sequence": 1, "game_state": {
+        "active_instructions": [], "hints": {"objects": []}}, "vision": None}
+    found = {"observation_sequence": 2, "game_state": {
+        "active_instructions": [],
+        "hints": {"objects": [{"id": "door-1", "label": "door", "bbox": [0.4, 0.1, 0.6, 0.9]}]}},
+        "vision": None}
+    interface = SimpleNamespace(send_req=AsyncMock(side_effect=[
+        {"action": "rotate", "confidence": 0.9,
+         "arguments": {"degrees": {"x": 0, "y": 62, "z": 0}}},
+        {"action": "done", "confidence": 0.95, "arguments": {}},
+    ]))
+    turn = AsyncMock(return_value={"ok": True, "result": {"status": "started"}})
+    monkeypatch.setattr(mcp_server, "rotate", turn)
+    get_state = AsyncMock(return_value=found)
+    monkeypatch.setattr(mcp_server, "get_game_state", get_state)
+    monkeypatch.setattr(voice_server.asyncio, "sleep", AsyncMock())
+
+    result = await voice_server.agent_send_execute_loop(
+        interface, "find the door", initial, max_steps=4)
+
+    assert result["status"] == "done"
+    assert [item["action"] for item in result["history"]] == ["rotate"]
+    assert interface.send_req.await_count == 2
+    first, second = [call.args for call in interface.send_req.await_args_list]
+    assert first[0] == second[0] == "find the door"
+    assert first[1]["game_state"]["hints"]["objects"] == []
+    assert second[1]["game_state"]["hints"]["objects"][0]["label"] == "door"
+    assert second[1]["agent_progress"]["completed_actions"][0]["action"] == "rotate"
+    turn.assert_awaited_once_with(x=0, y=62, z=0)
+
+
+@pytest.mark.asyncio
+async def test_goal_loop_waits_for_selected_movement_before_replanning(voice_server, monkeypatch):
+    initial = {"game_state": {"active_instructions": []}, "vision": None}
+    running = {"game_state": {"active_instructions": [{
+        "type": "walk_forward", "status": "running", "remaining_seconds": 0.4}]},
+        "vision": None}
+    finished = {"game_state": {"active_instructions": []}, "vision": None}
+    interface = SimpleNamespace(send_req=AsyncMock(side_effect=[
+        {"action": "walk_forward", "confidence": 0.9, "arguments": {"meters": 2}},
+        {"action": "done", "confidence": 0.9, "arguments": {}},
+    ]))
+    monkeypatch.setattr(mcp_server, "walk_forwards", AsyncMock(
+        return_value={"ok": True, "result": {"status": "started"}}))
+    get_state = AsyncMock(side_effect=[running, finished])
+    monkeypatch.setattr(mcp_server, "get_game_state", get_state)
+    sleeps = AsyncMock()
+    monkeypatch.setattr(voice_server.asyncio, "sleep", sleeps)
+
+    result = await voice_server.agent_send_execute_loop(
+        interface, "walk two meters", initial, max_steps=3)
+
+    assert result["status"] == "done"
+    assert get_state.await_count == 2
+    assert sleeps.await_count == 2
+    assert interface.send_req.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_goal_loop_stops_at_step_limit(voice_server, monkeypatch):
+    decision = {"action": "rotate", "confidence": 0.9,
+                "arguments": {"degrees": {"x": 0, "y": 30, "z": 0}}}
+    interface = SimpleNamespace(send_req=AsyncMock(return_value=decision))
+    monkeypatch.setattr(mcp_server, "rotate", AsyncMock(
+        return_value={"ok": True, "result": {"status": "started"}}))
+    state = {"game_state": {"active_instructions": []}, "vision": None}
+    monkeypatch.setattr(mcp_server, "get_game_state", AsyncMock(return_value=state))
+    monkeypatch.setattr(voice_server.asyncio, "sleep", AsyncMock())
+
+    result = await voice_server.agent_send_execute_loop(
+        interface, "find something", state, max_steps=3)
+
+    assert result["status"] == "step_limit"
+    assert len(result["history"]) == 3
+    assert interface.send_req.await_count == 3
 
 
 @pytest.mark.asyncio
