@@ -35,9 +35,9 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 markers = ["live: requires rendered Godot and paid Gemini/Backboard API access"]
 
-[project.scripts]
-mcp-server-jev-client = "mcp_server_jev_client:main"
-vod-voice = "mcp_server_jev_client.voice:main"
+[tool.uv]
+# This checkout runs root-level scripts; it has no installable src/ package.
+package = false
 
 [project.optional-dependencies]
 voice = [
@@ -48,7 +48,3 @@ voice = [
     "scipy>=1.18.1",
     "sounddevice>=0.5.6",
 ]
-
-[build-system]
-requires = ["uv_build>=0.12.17,<0.13.0"]
-build-backend = "uv_build"

@@ -7,6 +7,25 @@ import httpx
 logger = logging.getLogger(__name__)
 
 
+def observation_response(frame: dict, description, *, source_sequence: int,
+                         cache_hit: bool = False, source_age_ms: float = 0.0) -> dict:
+    """Keep freshly captured authoritative state separate from visual evidence."""
+    state = frame["result"]
+    return {
+        "observation_sequence": state["observation_sequence"],
+        "simulation_time": state["simulation_time"],
+        "game_state": {key: value for key, value in state.items()
+                       if key not in {"status", "message", "observation_sequence", "simulation_time", "hints"}},
+        "vision": {
+            "source": "gemini",
+            "source_observation_sequence": source_sequence,
+            "cache_hit": cache_hit,
+            "source_age_ms": source_age_ms,
+            **description.model_dump(),
+        },
+    }
+
+
 async def fetch_frame(client: httpx.AsyncClient, game_server: str) -> dict:
     response = await client.post(
         f"http://{game_server}/api/v1/commands", json={"command": "observe"}
@@ -40,14 +59,5 @@ async def observe_world(client: httpx.AsyncClient, game_server: str, vision) -> 
     logger.info("observe sequence=%s game_ms=%.2f gemini_ms=%.2f total_ms=%.2f",
                 sequence, (captured - start) * 1000, (finished - captured) * 1000,
                 (finished - start) * 1000)
-    return {
-        "observation_sequence": sequence,
-        "simulation_time": state["simulation_time"],
-        "game_state": {key: value for key, value in state.items()
-                       if key not in {"status", "message", "observation_sequence", "simulation_time", "hints"}},
-        "vision": {
-            "source": "gemini",
-            "source_observation_sequence": sequence,
-            **description.model_dump(),
-        },
-    }
+    return observation_response(frame, description, source_sequence=sequence,
+                                source_age_ms=(finished - captured) * 1000)

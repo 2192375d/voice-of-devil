@@ -3,8 +3,54 @@
 **Current checkout:** the executable entrypoints are the root-level `mcp_server.py`
 (stdio MCP) and `server.py` (voice loop). See [hinted observations](OBSERVATIONS.md)
 for their current data flow, structured `observe()` output, tests, and benchmark.
+This is a script-only uv project: `uv sync` installs dependencies without building
+an application package. From `mcp_server_jev_client/`, use:
+
+```sh
+uv sync --locked
+uv run --locked python mcp_server.py  # stdio MCP
+uv run --locked python server.py      # voice + Jev loop (run separately)
+uv run --locked python -m pytest -q
+```
+
+Keep your existing `.env`; no credential changes are required. The old
+`mcp-server-jev-client` and `vod-voice` console commands are not installed.
+Gemini quota protection is enabled by default; background prewarming is opt-in.
+See [quota safeguards](OBSERVATIONS.md#quota-safeguards) for budgets and cooldowns.
+
+### Voice commands: Godot state → Jev → one action
+
+The voice loop uses `get_game_state()` to send Godot's current position, rotation,
+held item, active instructions, and object hints directly to Jev. **No Gemini call
+or Gemini key is needed for voice commands.** `BACKBOARD_APIKEY` is still required.
+The existing Godot observation endpoint also captures a PNG, but Python discards
+it for this path; no image is sent to Jev. `vision` is explicitly `null`.
+
+Jev selects one of `walk_forward`, `walk_and_turn`, `stop`, `rotate`, `grab_item`, `drop_item`,
+`interact`, or `wait`. The selected action must have confidence above 0.5; a wait
+or low-confidence result sends nothing and prints why. Each submission executes
+one decision, without unrelated rotation or automatic repeat walks.
+`walk_and_turn` submits walking and turning concurrently, for example "walk forward
+while turning right 90 degrees." A turn-only request can also overlap an existing
+walk without stopping or restarting it. Stop remains exclusive. The two combined
+requests are not atomic: if one fails, the other may already be running. Both
+outcomes are reported and neither is automatically retried.
+Walking defaults to 5 meters (about one second at default speed); supported
+distances are ±1, ±2, ±5, and ±10 meters. Turns are relative yaw, positive right
+and negative left, in 2° steps from −180° through 180°. Stop cancels both walking
+and rotation. Collision can prevent travel even when the walk timer completes.
+
+The terminal prints `Jev action:` and `Godot result:`. Request failures and Godot
+rejections are surfaced without automatic retry. If state/hints cannot answer a
+scene-dependent request, Jev is instructed to wait rather than invent details.
+The separate MCP `observe` tool still provides Gemini image summaries; its quota
+and background settings do not affect the standalone voice loop.
+
+## Historical implementation (not current run instructions)
+
 The HTTP service/package instructions below describe an earlier implementation;
-the referenced package source files are not present in this checkout.
+the referenced package source files are not present in this checkout. For current
+observation behavior and benchmarking, use [OBSERVATIONS.md](OBSERVATIONS.md).
 
 `POST /observe` fetches a first-person frame through Godot's HTTP command API, summarizes
 it with `gemini-3.5-flash`, and asks `jev-latest` for a decision through Backboard.

@@ -30,10 +30,9 @@ def frame():
 
 
 def vision():
-    result = GeminiVision.__new__(GeminiVision)
-    result.client = SimpleNamespace(aio=SimpleNamespace(models=SimpleNamespace(
+    client = SimpleNamespace(aio=SimpleNamespace(models=SimpleNamespace(
         generate_content=AsyncMock(return_value=SimpleNamespace(text=json.dumps(DESCRIPTION))))))
-    return result
+    return GeminiVision(client=client)
 
 
 @pytest.mark.asyncio
@@ -60,7 +59,7 @@ async def test_observe_preserves_image_and_separates_state(hinted, caplog):
     assert args["contents"][-1].inline_data.data == PNG
     assert args["contents"][-1].inline_data.mime_type == "image/png"
     if hinted:
-        assert json.loads(args["contents"][0].text) == {"observation_sequence": 42, "hints": HINTS}
+        assert json.loads(args["contents"][0].text) == {"hints": HINTS}
     else:
         assert len(args["contents"]) == 1
     assert "goal" not in json.dumps(result)
@@ -114,8 +113,7 @@ async def test_jev_receives_json_and_separate_voice():
     from jev_interface import JevInterface
     interface = JevInterface.__new__(JevInterface)
     interface.context = "test"
-    answer = {axis: {"probabilities": {"0": 1.0}} for axis in ("x_dir", "y_dir", "z_dir")}
-    answer.update(movement_action={"probabilities": {"stopped": 1.0}}, observe_action={"noul": 0.0})
+    answer = {"action": {"probabilities": {"stop": 1.0}}}
     interface.client = SimpleNamespace(send_message=AsyncMock(
         return_value=SimpleNamespace(content=json.dumps(answer))))
     world = {"game_state": {"held_item": None}, "vision": DESCRIPTION}
@@ -129,11 +127,12 @@ async def test_jev_receives_json_and_separate_voice():
 @pytest.mark.asyncio
 async def test_movement_does_not_request_vision(monkeypatch):
     import mcp_server
-    response = SimpleNamespace(status_code=200, raise_for_status=lambda: None,
-                               json=lambda: {"ok": True, "result": {"status": "started"}, "image": None})
-    monkeypatch.setattr(mcp_server.requests, "post", lambda *a, **k: response)
+    factory = httpx.AsyncClient
+    monkeypatch.setattr(mcp_server.httpx, "AsyncClient", lambda **kwargs: factory(
+        **kwargs, transport=httpx.MockTransport(lambda _: httpx.Response(
+            200, json={"ok": True, "result": {"status": "started"}, "image": None}))))
     model = SimpleNamespace(summarize=AsyncMock())
-    monkeypatch.setattr(mcp_server, "gemini_vision", model)
+    monkeypatch.setattr(mcp_server, "vision_service", model)
     assert (await mcp_server.walk_forwards(5))["result"]["status"] == "started"
     model.summarize.assert_not_awaited()
 
@@ -143,8 +142,7 @@ async def test_mcp_returns_structured_observation(monkeypatch):
     import mcp_server
     world = {"observation_sequence": 42, "simulation_time": 12.5,
              "game_state": {"held_item": None}, "vision": DESCRIPTION}
-    monkeypatch.setattr(mcp_server, "gemini_vision", object())
-    monkeypatch.setattr(mcp_server, "observe_world", AsyncMock(return_value=world))
+    monkeypatch.setattr(mcp_server, "vision_service", SimpleNamespace(observe=AsyncMock(return_value=world)))
     result = await mcp_server.mcp.call_tool("observe", {})
     assert not result.is_error
     assert result.structured_content == world
