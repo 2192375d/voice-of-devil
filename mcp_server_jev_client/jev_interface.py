@@ -57,6 +57,8 @@ class JevInterface(object):
         # TODO: decide whether we want to store context of previous chats too
 
     async def send_req(self, user_request="", game_state_request=""):
+        if isinstance(game_state_request, dict):
+            game_state_request = json.dumps(game_state_request, separators=(",", ":"), allow_nan=False)
         # Send a message — thread and assistant are auto-created
         self.context += f"""
         # USER REQUEST:

@@ -1,4 +1,12 @@
 import sys
+import httpx
+import logging
+from typing import Any
+import gemini_input
+from observation import observe_world
+import requests
+from mcp.server.mcpserver import MCPServer
+#import jev_interface
 import asyncio
 import threading
 from queue import Queue
@@ -87,14 +95,48 @@ async def drop_item() -> None:
     await _enqueue({"command": "drop_item"})
 
 
-@mcp.tool()
-async def rotate(x: int = 0, y: int = 90, z: int = 0) -> None:
-    """
-    Turn by a RELATIVE yaw: y degrees are added to the current heading (positive turns right).
-    x and z must be 0.
-    """
-    await _enqueue({"command": "rotate", "arguments": {"degrees": {"x": x, "y": y, "z": z}}})
+@mcp.tool(structured_output=True)
+async def observe() -> dict[str, Any]:
+	"""Return current game state and Gemini's interpretation of the hinted screenshot."""
+	global gemini_vision
+	if gemini_vision is None:
+		gemini_vision = gemini_input.GeminiVision()
+	# Close the game connection after each observation in both CLI and MCP use.
+	async with httpx.AsyncClient(timeout=15.0) as client:
+		return await observe_world(client, GAME_SERVER, gemini_vision)
 
+@mcp.tool()
+async def grab_item() -> dict :
+	"""
+	Continue walking
+	"""
+
+	r = requests.post(f'http://{GAME_SERVER}/api/v1/commands',headers={'Content-Type':'application/json'}, json={"command":"grab_item"})
+	print(r.status_code)
+	return r.json()
+
+@mcp.tool()
+async def drop_item() -> dict :
+	"""
+	Continue walking
+	"""
+
+	r = requests.post(f'http://{GAME_SERVER}/api/v1/commands',headers={'Content-Type':'application/json'}, json={"command":"drop_item"})
+	print(r.status_code)
+	return r.json()
+
+@mcp.tool()
+async def rotate(x:int=0, y:int=90, z:int=0) -> dict :
+	"""
+	Rotate camera to specific position
+	"""
+
+	r = requests.post(f'http://{GAME_SERVER}/api/v1/commands',headers={'Content-Type':'application/json'}, json={"command":"rotate","arguments":{"degrees":{"x":x,"y":y,"z":z}}})
+	print(r.status_code)
+	return r.json()
+
+#asyncio.run(walk_forwards(5))
 
 if __name__ == "__main__":
-    mcp.run(transport="stdio")
+	logging.basicConfig(level=logging.INFO)
+	mcp.run(transport="stdio")

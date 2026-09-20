@@ -19,6 +19,7 @@ public partial class GameApiServer : Node
 		ProcessPhysicsPriority = -1000;
 		inbox = new GameRequestInbox();
 		observations = new GameObservationService(inbox, GetPlayer, () => simulationTime);
+		AddChild(new GameObservationPump { Prepare = observations.Prepare });
 		string bind = System.Environment.GetEnvironmentVariable("VOD_API_BIND") ?? BindAddress;
 		string portSetting = System.Environment.GetEnvironmentVariable("VOD_API_PORT");
 		string originsSetting = System.Environment.GetEnvironmentVariable("VOD_API_ORIGINS");
